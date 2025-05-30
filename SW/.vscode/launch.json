@@ -8,7 +8,7 @@
             "program": "/home/pi/HArpi/SW/out/HArpi",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/out",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",

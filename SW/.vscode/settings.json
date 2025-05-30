@@ -16,7 +16,7 @@
     ],
     "makefile.launchConfigurations": [
         {
-            "cwd": "/home/pi/HArpi/SW/",
+            "cwd": "/home/pi/HArpi/SW/out",
             "binaryPath": "/home/pi/HArpi/SW/out/HArpi",
             "binaryArgs": []
         }

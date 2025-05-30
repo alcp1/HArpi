@@ -35,6 +35,7 @@
 *.i*86
 *.x86_64
 *.hex
+SW/out/HArpi
 
 # Debug files
 *.dSYM/
