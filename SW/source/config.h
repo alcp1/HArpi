@@ -25,8 +25,7 @@ extern "C" {
 #define CONFIG_GENERAL_SETTINGS_LEVEL  "GeneralSettings"
 /* Other Definitions */
 #define JSON_CONFIG_FILE_PATH  "./configHArpi.json"
-
-#info "using newer header"
+#warning "using newer header"
     
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES

@@ -23,6 +23,7 @@
 #include <gateway.h>
 #include <hapcan.h>
 #include <manager.h>
+#include <hevents.h>
 
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
