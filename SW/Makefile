@@ -87,4 +87,4 @@ VPATH = $(SRCDIRS)
 # Removes all generated object files and the executable.
 clean:
 	@echo "Cleaning up..."
-	@rm -rf $(OBJDIR) $(BINDIR)
+	@rm -rf $(OBJDIR) $(BINDIR)/$(TARGET)

@@ -3,11 +3,8 @@
 //----------------------------------------------------------------------------//
 //  REVISION |    DATE     |                               |      AUTHOR      //
 //----------------------------------------------------------------------------//
-//  1.00     | 10/Dec/2021 |                               | ALCP             //
-// - First version                                                            //
-//----------------------------------------------------------------------------//
-//  1.01     | 24/Oct/2024 |                               | ALCP             //
-// - Add funtions jh_getJFieldIntObj and jh_getJArrayElementsObj              //
+//  1.00     | 01/Jun/2025 |                               | ALCP             //
+// - First Version from HMSG 01.12                                            //
 //----------------------------------------------------------------------------//
 
 /*
@@ -20,9 +17,9 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <errno.h>
-#include "jsonhandler.h"
+#include <jsonhandler.h>
 #include <config.h>
-#include "debug.h"
+#include <debug.h>
 
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS

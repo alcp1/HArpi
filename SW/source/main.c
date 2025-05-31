@@ -3,8 +3,8 @@
 //----------------------------------------------------------------------------//
 //  REVISION |    DATE     |                               |      AUTHOR      //
 //----------------------------------------------------------------------------//
-//  1.00     | 23/May/2025 |                               | ALCP             //
-// - First version                                                            //
+//  1.00     | 01/Jun/2025 |                               | ALCP             //
+// - First Version from HMSG 01.12                                            //
 //----------------------------------------------------------------------------//
 
 /*
@@ -13,12 +13,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "manager.h"
+#include <manager.h>
 
 int main(int argc, char *argv[])
 {    
-    setbuf(stdout, NULL); // disable buffering on stdout: Needed for immediate debug
-    
+    // disable buffering on stdout: Needed for immediate debug
+    setbuf(stdout, NULL);     
     // Init manager
     managerInit();
 }

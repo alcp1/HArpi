@@ -3,8 +3,8 @@
 //----------------------------------------------------------------------------//
 //  REVISION |    DATE     |                               |      AUTHOR      //
 //----------------------------------------------------------------------------//
-//  1.00     | 23/May/2025 |                               | ALCP             //
-// - First version                                                            //
+//  1.00     | 01/Jun/2025 |                               | ALCP             //
+// - First Version from HMSG 01.12                                            //
 //----------------------------------------------------------------------------//
 
 #ifndef CONFIG_H
@@ -26,7 +26,7 @@ extern "C" {
 /* Other Definitions */
 #define JSON_CONFIG_FILE_PATH  "./configHArpi.json"
 
-#warning "using newer header"
+#info "using newer header"
     
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES
