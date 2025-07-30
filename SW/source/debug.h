@@ -6,6 +6,9 @@
 //  1.00     | 30/Jul/2025 |                               | ALCP             //
 // - First Version: copied from HMSG 01.12                                    //
 //----------------------------------------------------------------------------//
+//  1.01     | 30/Jul/2025 |                               | ALCP             //
+// - Updates to remove unused parts from HMSG 01.12                           //
+//----------------------------------------------------------------------------//
 
 #ifndef DEBUG_H
 //#define DEBUG_H
@@ -26,22 +29,6 @@ extern "C" {
 #define DEBUG_ON
 #define DEBUG_VERSION
 
-/* MQTT - Only Events */
-#define DEBUG_MQTT_ERRORS
-#define DEBUG_MQTT_CONNECTED
-#define DEBUG_MQTT_PUBLISH_TIMEOUT
-//#define DEBUG_MQTT_CONNECT // Disable for production
-//#define DEBUG_MQTT_RECEIVED // Disable for production
-//#define DEBUG_MQTT_SENT // Disable for production
-    
-/* SocketCAN */
-#define DEBUG_SOCKETCAN_ERROR
-#define DEBUG_SOCKETCAN_OPENED
-//#define DEBUG_SOCKETCAN_OPEN // Disable for production
-//#define DEBUG_SOCKETCAN_READ_FULL // Disable for production
-//#define DEBUG_SOCKETCAN_READ_EVENTS // Disable for production
-//#define DEBUG_SOCKETCAN_WRITE // Disable for production
-
 /* Buffer */
 //#define DEBUG_BUFFER
     
@@ -53,52 +40,15 @@ extern "C" {
 #define DEBUG_CANBUF_ERRORS
 //#define DEBUG_CANBUF_SEND // Disable for production
 
-
-/* Socket Server Buffer */
-#define DEBUG_SOCKETSERVERBUF_ERRORS
-//#define DEBUG_SOCKETSERVERBUF_SEND // Disable for production
-    
-/* Socket Server */
-#define DEBUG_SOCKETSERVER_ERROR
-#define DEBUG_SOCKETSERVER_OPENED
-//#define DEBUG_SOCKETSERVER_PROCESS_ERROR // Disable for production
-//#define DEBUG_SOCKETSERVER_OPEN // Disable for production
-//#define DEBUG_SOCKETSERVER_READ_FULL // Disable for production
-//#define DEBUG_SOCKETSERVER_READ_EVENTS // Disable for production
-//#define DEBUG_SOCKETSERVER_WRITE // Disable for production
-
 /* CAN DEBUG */   
 #define DEBUG_CAN_HAPCAN
 //#define DEBUG_CAN_STANDARD // Disable for production
     
 /* HAPCAN DEBUG */   
 #define DEBUG_HAPCAN_ERRORS
-#define DEBUG_HAPCAN_RELAY_ERRORS
-#define DEBUG_HAPCAN_BUTTON_ERRORS
-#define DEBUG_HAPCAN_TEMPERATURE_ERRORS
-#define DEBUG_HAPCAN_RGB_ERRORS
-#define DEBUG_HAPCAN_SYSTEM_ERRORS
-#define DEBUG_HAPCAN_CONFIG_ERRORS
-#define DEBUG_RGBW_ERRORS
-#define DEBUG_TIM_ERRORS
-//#define DEBUG_RGBW_FULL // Disable for production
-//#define DEBUG_HAPCAN_CAN2MQTT // Disable for production
-//#define DEBUG_HAPCAN_MQTT2CAN // Disable for production
-    
-/* CONFIG DEBUG */
-#define DEBUG_CONFIG_ERRORS
-#define DEBUG_CONFIG_RELOAD
-//#define DEBUG_CONFIG_FULL // Disable for production
-    
-/* JSON DEBUG */
-//#define DEBUG_JSON_ERRORS // Disable for production
-//#define DEBUG_JSON_FULL // Disable for production
-
-/* GATEWAY DEBUG */
-#define DEBUG_GATEWAY_ERRORS
-//#define DEBUG_GATEWAY_PRINT // Disable for production
-//#define DEBUG_GATEWAY_LISTS // Disable for production 
-//#define DEBUG_GATEWAY_SEARCH // Disable for production
+   
+/* CVS CONFIG DEBUG */
+#define DEBUG_CVSCONFIG_ERRORS
     
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES

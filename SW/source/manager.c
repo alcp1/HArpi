@@ -6,6 +6,9 @@
 //  1.00     | 01/Jun/2025 |                               | ALCP             //
 // - First Version from HMSG 01.12                                            //
 //----------------------------------------------------------------------------//
+//  1.01     | 30/Jul/2025 |                               | ALCP             //
+// - Updates to remove unused parts from HMSG 01.12                           //
+//----------------------------------------------------------------------------//
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -21,6 +24,7 @@
 #include <errorhandler.h>
 #include <hapcan.h>
 #include <manager.h>
+#include <csvconfig.h>
 #include <harpievents.h>
 
 //----------------------------------------------------------------------------//
@@ -263,6 +267,7 @@ void* managerHandleConfigFile(void *arg)
             //gateway_init();
         }
         */
+        csvconfig_init();
         // Only check every 10 seconds
         sleep(10);
     }

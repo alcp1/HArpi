@@ -43,6 +43,7 @@ static time_t g_last_date;
 static bool getConfigFileModifiedDate(time_t *date);
 static bool isFileChanged(void);
 static void updateConfigFromFile(void);
+static bool isCSVfile(const char *filename);
 
 /**
  * Check if configuration file was changed
@@ -94,21 +95,47 @@ static bool isFileChanged(void)
  **/
 static void updateConfigFromFile(void)
 {    
-    /*
     DIR *d;
     struct dirent *dir;
+    int total_csv_files = 0;
+    // Open directory
     d = opendir(CSV_CONFIG_FILES_PATH);
     if (d == NULL) 
     {
-        perror("Error opening directory");
-        return 1;
+        #ifdef DEBUG_CVSCONFIG_ERRORS
+        debug_print("cvsconfig - ERROR: Error opening directory!\n");
+        #endif
     }
+    else
+    {
+        // Read directory files
+        while ((dir = readdir(d)) != NULL) 
+        {          
+            debug_print("cvsconfig - file: %s!\n", dir->d_name);
+            if (isCSVfile(dir->d_name))
+            {
+                total_csv_files++;
+            }
+        }
+        debug_print("cvsconfig - files: %n!\n", total_csv_files);
+    }
+    /*
     // Update file date
     if( !getConfigFileModifiedDate(&g_last_date) )
     {
         g_last_date = 0;
     }
     */
+}
+
+// Function to check if a file has a .csv extension
+static bool isCSVfile(const char *filename)
+{
+    bool ret;
+    const char *dot = strrchr(filename, '.');
+    ret = dot != NULL;
+    ret = ret && (strcmp(dot, ".csv") == 0);
+    return ret;
 }
 
 //----------------------------------------------------------------------------//
