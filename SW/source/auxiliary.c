@@ -6,6 +6,9 @@
 //  1.00     | 30/Jul/2025 |                               | ALCP             //
 // - First Version: copied from HMSG 01.12                                    //
 //----------------------------------------------------------------------------//
+//  1.01     | 30/Jul/2025 |                               | ALCP             //
+// - Updates to remove unused parts from HMSG 01.12                           //
+//----------------------------------------------------------------------------//
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -20,7 +23,6 @@
 #include <errno.h>
 #include "auxiliary.h"
 #include "debug.h"
-#include "mqtt.h"
 
 
 //----------------------------------------------------------------------------//

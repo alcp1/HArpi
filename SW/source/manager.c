@@ -17,10 +17,8 @@
 #include <auxiliary.h>
 #include <buffer.h>
 #include <canbuf.h>
-#include <config.h>
 #include <debug.h>
 #include <errorhandler.h>
-#include <gateway.h>
 #include <hapcan.h>
 #include <manager.h>
 #include <harpievents.h>
@@ -255,6 +253,7 @@ void* managerHandleConfigFile(void *arg)
 {    
     while(1)
     {
+        /*
         if(config_isNewConfigAvailable())
         {
             #ifdef DEBUG_MANAGER_CONFIG_EVENTS
@@ -263,8 +262,9 @@ void* managerHandleConfigFile(void *arg)
             // For every new configuration file, reload the gateway
             //gateway_init();
         }
+        */
         // Only check every 10 seconds
-        sleep(10);        
+        sleep(10);
     }
 }
 
@@ -288,8 +288,8 @@ void managerInit(void)
     /**************************************************************************
      * INIT CONFIG AND GATEWAY
      *************************************************************************/
-    config_init();
-     //gateway_init();
+    //config_init();
+    //gateway_init();
     
     /**************************************************************************
      * INIT BUFFERS

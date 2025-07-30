@@ -6,6 +6,9 @@
 //  1.00     | 30/Jul/2025 |                               | ALCP             //
 // - First Version: copied from HMSG 01.12                                    //
 //----------------------------------------------------------------------------//
+//  1.01     | 30/Jul/2025 |                               | ALCP             //
+// - Updates to remove unused parts from HMSG 01.12                           //
+//----------------------------------------------------------------------------//
 
 #ifndef HAPCAN_H
 #define HAPCAN_H
@@ -144,14 +147,6 @@ void hapcan_getCANDataFromHAPCAN(hapcanCANData* hCD_ptr,
 uint8_t hapcan_getChecksumFromCAN(hapcanCANData* hCD_ptr);
 
 /**
- * Set the RTC message
- * 
- * \param   hCD_ptr     pointer to HAPCAN CAN Data Struct
- *  
- **/
-void hapcan_setHAPCANRTCMessage(hapcanCANData* hCD_ptr);
-
-/**
  * Fill HAPCAN data with a system message based on destination node and group, 
  * for a given frametype
  * \param   hd_result       (OUTPUT) date to be filled                      
@@ -161,45 +156,6 @@ void hapcan_setHAPCANRTCMessage(hapcanCANData* hCD_ptr);
  */
 void hapcan_getSystemFrame(hapcanCANData *hd_result, uint16_t frametype, 
         int node, int group);
-
-
-/**
- * Init the gateway - Setup the lists based on configuration file
- *  
- **/
-void hapcan_initGateway(void);
-
-/**
- * Check the CAN message received, and add to MQTT Pub buffer the needed 
- * response(s)
- * \param   hapcanData      (INPUT) received HAPCAN Frame
- *          timestamp       (INPUT) Received message timestamp
- * 
- * \return  HAPCAN_NO_RESPONSE: No response was added to MQTT Pub Buffer
- *          HAPCAN_MQTT_RESPONSE: Response added to MQTT Buffer (OK)
- *          HAPCAN_MQTT_RESPONSE_ERROR: Error adding to MQTT Pub Buffer
- *          HAPCAN_RESPONSE_ERROR: Other error
- *          
- */
-int hapcan_handleCAN2MQTT(hapcanCANData* hapcanData, 
-        unsigned long long timestamp);
-
-/**
- * Check the MQTT message received, and add to CAN Write buffer the needed 
- * response(s)
- * \param   topic           (INPUT) received topic
- *          payload         (INPUT) received payload
- *          payloadlen      (INPUT) received payload len
- *          timestamp       (INPUT) Received message timestamp
- * 
- * \return  HAPCAN_NO_RESPONSE: No response was added to CAN Write Buffer
- *          HAPCAN_CAN_RESPONSE: Response added to CAN Write Buffer (OK)
- *          HAPCAN_CAN_RESPONSE_ERROR: Error adding to MQTT Pub Buffer
- *          HAPCAN_RESPONSE_ERROR: Other error
- *          
- */
-int hapcan_handleMQTT2CAN(char* topic, void* payload, int payloadlen, 
-        unsigned long long timestamp);
 
 /**
  * Add a HAPCAN Message to the CAN Write Buffer
@@ -214,20 +170,6 @@ int hapcan_handleMQTT2CAN(char* topic, void* payload, int payloadlen,
  */
 int hapcan_addToCANWriteBuffer(hapcanCANData* hapcanData, 
         unsigned long long timestamp, bool sendToSocket);
-
-/**
- * Add a MQTT Message to the MQTT Pub Buffer
- * \param   topic           (INPUT) received topic
- *          payload         (INPUT) received payload
- *          payloadlen      (INPUT) received payload len
- *          timestamp       (INPUT) Received message timestamp
- * 
- * \return  HAPCAN_NO_RESPONSE: No response was added to CAN Write Buffer
- *          HAPCAN_MQTT_RESPONSE: Response added to CAN Write Buffer (OK)
- *          HAPCAN_MQTT_RESPONSE_ERROR: Buffer Error
- */
-int hapcan_addToMQTTPubBuffer(char* topic, void* payload, int payloadlen, 
-        unsigned long long timestamp);
 
 #ifdef __cplusplus
 }

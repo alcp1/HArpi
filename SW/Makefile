@@ -38,7 +38,7 @@ SRCDIRS = source ../HMSG/SW/source
 # Find all .c files in the specified source directories.
 # 'foreach' iterates through SRCDIRS.
 # 'wildcard' expands to all files matching the pattern within each directory.
-C_IGNORE = ../HMSG/SW/source/main.c ../HMSG/SW/source/manager.c ../HMSG/SW/source/config.c ../HMSG/SW/source/jsonhandler.c
+C_IGNORE = 
 C_SOURCES = $(foreach dir, $(SRCDIRS), $(wildcard $(dir)/*.c))
 C_SOURCES := $(filter-out $(C_IGNORE), $(C_SOURCES))
 #To print C_SOURCES:

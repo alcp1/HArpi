@@ -34,7 +34,7 @@
 //----------------------------------------------------------------------------//
 // INTERNAL GLOBAL VARIABLES
 //----------------------------------------------------------------------------//
-static pthread_mutex_t g_csvfiles_mutex = PTHREAD_MUTEX_INITIALIZER;
+//static pthread_mutex_t g_csvfiles_mutex = PTHREAD_MUTEX_INITIALIZER;
 static time_t g_last_date;
 
 //----------------------------------------------------------------------------//
@@ -94,6 +94,7 @@ static bool isFileChanged(void)
  **/
 static void updateConfigFromFile(void)
 {    
+    /*
     DIR *d;
     struct dirent *dir;
     d = opendir(CSV_CONFIG_FILES_PATH);
@@ -107,6 +108,7 @@ static void updateConfigFromFile(void)
     {
         g_last_date = 0;
     }
+    */
 }
 
 //----------------------------------------------------------------------------//
@@ -128,7 +130,7 @@ void csvconfig_init(void)
  **/
 bool csvconfig_isNewConfigAvailable(void)
 {
-
+    return true;
 }
 
 /**
