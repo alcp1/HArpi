@@ -16,6 +16,8 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <dirent.h>
+#include <stdint.h>
 #include <time.h>
 #include <auxiliary.h>
 #include <csvconfig.h>
@@ -32,6 +34,7 @@
 //----------------------------------------------------------------------------//
 // INTERNAL GLOBAL VARIABLES
 //----------------------------------------------------------------------------//
+static pthread_mutex_t g_csvfiles_mutex = PTHREAD_MUTEX_INITIALIZER;
 static time_t g_last_date;
 
 //----------------------------------------------------------------------------//
@@ -91,6 +94,14 @@ static bool isFileChanged(void)
  **/
 static void updateConfigFromFile(void)
 {    
+    DIR *d;
+    struct dirent *dir;
+    d = opendir(CSV_CONFIG_FILES_PATH);
+    if (d == NULL) 
+    {
+        perror("Error opening directory");
+        return 1;
+    }
     // Update file date
     if( !getConfigFileModifiedDate(&g_last_date) )
     {
