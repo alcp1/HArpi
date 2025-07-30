@@ -7,8 +7,8 @@
 // - First version                                                            //
 //----------------------------------------------------------------------------//
 
-#ifndef HEVENTS_H
-#define HEVENTS_H
+#ifndef HARPIEVENTS_H
+#define HARPIEVENTS_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,7 +16,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <hapcan.h>
+#include <harpi.h>
 
 //----------------------------------------------------------------------------//
 // EXTERNAL DEFINITIONS
@@ -37,7 +37,7 @@ extern "C" {
  *          timestamp       (INPUT) Received message timestamp
  * 
  */
-void hevents_handleCAN(hapcanCANData* hapcanData, 
+void harpievents_handleCAN(hapcanCANData* hapcanData, 
         unsigned long long timestamp);
 
 

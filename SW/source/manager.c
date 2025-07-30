@@ -23,7 +23,7 @@
 #include <gateway.h>
 #include <hapcan.h>
 #include <manager.h>
-#include <hevents.h>
+#include <harpievents.h>
 
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
@@ -200,7 +200,7 @@ void* managerHandleCAN0Buffers(void *arg)
                         //-------------------------------------------------
                         // Error in handled within the function
                         hapcan_getHAPCANDataFromCAN(&cf_Frame, &hapcanData);
-                        hevents_handleCAN(&hapcanData, timestamp);
+                        harpievents_handleCAN(&hapcanData, timestamp);
                     }
                 }
                 // 2ms loop after empty buffer
