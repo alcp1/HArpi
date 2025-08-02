@@ -117,7 +117,7 @@ static void updateConfigFromFile(void)
                 total_csv_files++;
             }
         }
-        debug_print("cvsconfig - files: %n!\n", total_csv_files);
+        debug_print("cvsconfig - files: %d!\n", total_csv_files);
     }
     /*
     // Update file date
