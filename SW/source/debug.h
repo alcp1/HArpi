@@ -49,6 +49,7 @@ extern "C" {
    
 /* CVS CONFIG DEBUG */
 #define DEBUG_CVSCONFIG_ERRORS
+#define DEBUG_CVSCONFIG_EVENTS
     
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES

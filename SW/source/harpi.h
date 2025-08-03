@@ -31,7 +31,7 @@ extern "C" {
 typedef struct  
 {
     char* stateMachineName;
-    uint16_t stateMachineID;
+    int16_t stateMachineID;
     char* bus;
     char* load;
     char* type;
@@ -45,8 +45,8 @@ typedef struct
 {
     char* stateMachineName;
     char* eventName;
-    uint16_t stateMachineID;
-    uint16_t eventSetID;
+    int16_t stateMachineID;
+    int16_t eventSetID;
 } harpiSMEventsData;
 
 // Action Sets
@@ -75,10 +75,10 @@ typedef struct
 {
     char* stateMachineName;
     char* eventName;
-    uint16_t stateMachineID;
-    uint16_t currentStateID;
-    uint16_t eventSetID;
-    uint16_t actionsSetID;
+    int16_t stateMachineID;
+    int16_t currentStateID;
+    int16_t eventSetID;
+    int16_t actionsSetID;
 } harpiStateActionsData;
 
 // State Transitions
@@ -88,10 +88,10 @@ typedef struct
     char* currentStateName;
     char* eventName;
     char* newStateName;
-    uint16_t stateMachineID;
-    uint16_t currentStateID;
-    uint16_t eventSetID;
-    uint16_t newStateID;
+    int16_t stateMachineID;
+    int16_t currentStateID;
+    int16_t eventSetID;
+    int16_t newStateID;
 } harpiStateTransitionsData;
 
 //----------------------------------------------------------------------------//
