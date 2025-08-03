@@ -29,30 +29,30 @@
 // INTERNAL TYPES
 //----------------------------------------------------------------------------//
 // List 
-typedef struct harpiActionSetsList 
+typedef struct list 
 {
     harpiActionSetsData actionSet;
-    struct harpiActionSetsList *next;
-} harpiActionSetsList;
+    struct list *next;
+} list;
 
 //----------------------------------------------------------------------------//
 // INTERNAL GLOBAL VARIABLES
 //----------------------------------------------------------------------------//
 static pthread_mutex_t g_ActionSets_mutex = PTHREAD_MUTEX_INITIALIZER;
-static harpiActionSetsList* head = NULL;
+static list* head = NULL;
 
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
-static void clearElementData(harpiActionSetsList* element);
-static void freeElementData(harpiActionSetsList* element);
-static void addToList(harpiActionSetsList* element);
-static harpiActionSetsList* getFromOffset(int offset); // NULL means error
+static void clearElementData(list* element);
+static void freeElementData(list* element);
+static void addToList(list* element);
+static list* getFromOffset(int offset); // NULL means error
 static int deleteList(void);
 
 
 // Clear all fields from gatewayList //
-static void clearElementData(harpiActionSetsList* element)
+static void clearElementData(list* element)
 {
     element->actionSet.actionsSetID = -1;
     element->actionSet.bus = NULL;
@@ -62,7 +62,7 @@ static void clearElementData(harpiActionSetsList* element)
 }
 
 // Free allocated fields from gatewayList //
-static void freeElementData(harpiActionSetsList* element)
+static void freeElementData(list* element)
 {
     // bus
     if(element->actionSet.bus != NULL)
@@ -85,11 +85,11 @@ static void freeElementData(harpiActionSetsList* element)
 }
 
 // Add element to a given list
-static void addToList(harpiActionSetsList* element)
+static void addToList(list* element)
 {
-    harpiActionSetsList *link;
+    list *link;
     // Create a new element to the list
-    link = (harpiActionSetsList*)malloc(sizeof(*link));
+    link = (list*)malloc(sizeof(*link));
     // Copy structure data ("shallow" copy)
     *link = *element;   
     // Create and copy field that are pointers
@@ -127,10 +127,10 @@ static void addToList(harpiActionSetsList* element)
 }
 
 // get element from header (after offset positions). NULL means error
-static harpiActionSetsList* getFromOffset(int offset) 
+static list* getFromOffset(int offset) 
 {
     int li_length;
-    harpiActionSetsList* current = NULL;
+    list* current = NULL;
     // Check offset parameter
     if( offset < 0 )
     {
@@ -153,8 +153,8 @@ static harpiActionSetsList* getFromOffset(int offset)
 // Delete list
 static int deleteList(void)
 {
-    harpiActionSetsList* current;
-    harpiActionSetsList* next;
+    list* current;
+    list* next;
     
     // Check all
     current = head;
@@ -185,3 +185,88 @@ static int deleteList(void)
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
+void harpiactions_init(void)
+{
+    int check;
+    //---------------------------------------------
+    // Delete list - PROTECTED
+    //---------------------------------------------
+    // LOCK
+    pthread_mutex_lock(&g_ActionSets_mutex);
+    // Delete
+    check = deleteList();
+    // UNLOCK
+    pthread_mutex_unlock(&g_ActionSets_mutex);
+    if( check == EXIT_FAILURE )
+    {
+        #ifdef DEBUG_HARPIACTIONS_ERRORS
+        debug_print("harpiactions_init error!\n");
+        #endif
+    }
+}
+
+void harpiactions_AddElementToList(harpiActionSetsData *actionSet)
+{
+    list element;
+    clearElementData(&element);
+    element.actionSet.actionsSetID = actionSet->actionsSetID;
+    element.actionSet.bus = strdup(actionSet->bus);
+    element.actionSet.load = strdup(actionSet->load);
+    element.actionSet.eventName = strdup(actionSet->eventName);
+    memcpy(&element.actionSet.frame, &actionSet->frame, sizeof(hapcanCANData));
+    //---------------------------------------------
+    // Add to list - PROTECTED
+    //---------------------------------------------
+    // LOCK
+    pthread_mutex_lock(&g_ActionSets_mutex);
+    // Add
+    addToList(&element);
+    // UNLOCK
+    pthread_mutex_unlock(&g_ActionSets_mutex);
+    // Free data and then return
+    freeElementData(&element);
+}
+
+void harpiactions_SendActionsFromID(int16_t actionsSetID)
+{
+    list* current;
+    bool match;
+    int check;
+    unsigned long long millisecondsSinceEpoch;
+    // Get Timestamp
+    millisecondsSinceEpoch = aux_getmsSinceEpoch();
+    // LOCK
+    pthread_mutex_lock(&g_ActionSets_mutex);
+    // Get element from initial position
+    current = getFromOffset(0);
+    // Check remaining from offset
+    match = false;
+    while(current != NULL) 
+    {
+        //---------------------------------
+        // Check data                    
+        //---------------------------------
+        match = (current->actionSet.actionsSetID == actionsSetID);
+        if(match)
+        {
+            // Found - Send CAN Frame for action
+            check = hapcan_addToCANWriteBuffer(&(current->actionSet.frame), 
+                millisecondsSinceEpoch);
+            if(check != HAPCAN_CAN_RESPONSE)
+            {
+                #ifdef DEBUG_HAPCAN_ERRORS
+                debug_print("harpiactions_SendActionsFromID - ERROR: "
+                    "hapcan_addToCANWriteBuffer!\n");
+                #endif
+            }
+        }                
+        //*******************************//
+        // Get new current address       //
+        //*******************************//
+        current = current->next;
+    }
+    // UNLOCK
+    pthread_mutex_unlock(&g_ActionSets_mutex);
+    // return
+    return;
+}

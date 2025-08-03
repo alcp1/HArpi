@@ -52,7 +52,7 @@ typedef struct
 // Action Sets
 typedef struct  
 {
-    uint16_t actionsSetID;
+    int16_t actionsSetID;
     char* bus;
     char* load;
     char* eventName;
@@ -62,7 +62,7 @@ typedef struct
 // Event Sets
 typedef struct  
 {
-    uint16_t eventsSetID;
+    int16_t eventsSetID;
     char* bus;
     char* load;
     char* eventName;

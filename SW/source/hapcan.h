@@ -169,7 +169,7 @@ void hapcan_getSystemFrame(hapcanCANData *hd_result, uint16_t frametype,
  *          
  */
 int hapcan_addToCANWriteBuffer(hapcanCANData* hapcanData, 
-        unsigned long long timestamp, bool sendToSocket);
+        unsigned long long timestamp);
 
 #ifdef __cplusplus
 }

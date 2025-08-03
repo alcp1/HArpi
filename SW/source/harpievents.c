@@ -88,7 +88,7 @@ void harpievents_handleCAN(hapcanCANData* hapcanData, unsigned long long timesta
             hapcanDataOut.data[i] = 0x10 + (uint8_t)i;
         }
     }
-    check = hapcan_addToCANWriteBuffer(&hapcanDataOut, timestamp, false);
+    check = hapcan_addToCANWriteBuffer(&hapcanDataOut, timestamp);
     if(check != HAPCAN_CAN_RESPONSE)
     {
         #ifdef DEBUG_HAPCAN_ERRORS

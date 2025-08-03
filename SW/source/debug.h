@@ -50,6 +50,9 @@ extern "C" {
 /* CVS CONFIG DEBUG */
 #define DEBUG_CVSCONFIG_ERRORS
 #define DEBUG_CVSCONFIG_EVENTS
+
+/* HARPIACTIONS */
+#define DEBUG_HARPIACTIONS_ERRORS
     
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES

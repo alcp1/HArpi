@@ -24,6 +24,7 @@
 #include <csvconfig.h>
 #include <debug.h>
 #include <harpi.h>
+#include <harpiactions.h>
 
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
@@ -335,6 +336,11 @@ void csvconfig_reload(void)
     csvconfigFileData* a_csvconfigFileData;
     char *token;
     csvconfig_file_section_t section = CSV_SECTION_OTHER;
+    //----------------------------------
+    // Init Gateways
+    //----------------------------------
+    harpiactions_init();
+
     //----------------------------------
     // Init CSV File(s) data
     //----------------------------------

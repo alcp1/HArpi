@@ -31,7 +31,29 @@ extern "C" {
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
+/**
+ * Init Gateway data:
+ * - empty the list and if list is available, free used memory
+ * 
+ **/
+void harpiactions_init(void);
 
+/**
+ * Add an element to the list that will be used to match frames / topics
+ * 
+ * \param   actionSet   (INPUT) harpiActionSetsData data
+ * 
+ **/
+void harpiactions_AddElementToList(harpiActionSetsData *actionSet);
+
+/**
+ * Search for an harpiActionSetsData data and send the data that matches such
+ * an ID
+ * 
+ * \param   actionSetID (INPUT) The HAPCAN Frame to be searched
+ *  
+ **/
+void harpiactions_SendActionsFromID(int16_t actionsSetID);
 
 
 #ifdef __cplusplus
