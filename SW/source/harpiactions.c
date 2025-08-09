@@ -28,133 +28,106 @@
 //----------------------------------------------------------------------------//
 // INTERNAL TYPES
 //----------------------------------------------------------------------------//
-// List 
-typedef struct list 
+// Linked List 
+typedef struct linkedList 
 {
     harpiActionSetsData actionSet;
-    struct list *next;
-} list;
+    struct linkedList *next;
+} linkedList;
 
 //----------------------------------------------------------------------------//
 // INTERNAL GLOBAL VARIABLES
 //----------------------------------------------------------------------------//
 static pthread_mutex_t g_ActionSets_mutex = PTHREAD_MUTEX_INITIALIZER;
-static list* head = NULL;
+static linkedList* head = NULL;
+static harpiActionSetsData* harpiActionSetArray = NULL;
+static int16_t harpiActionSetArrayLen = 0;
 
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
-static void clearElementData(list* element);
-static void freeElementData(list* element);
-static void addToList(list* element);
-static list* getFromOffset(int offset); // NULL means error
-static int deleteList(void);
+static void clearElementData(linkedList* element);
+static void freeElementData(linkedList* element);
+static void addToLinkedList(linkedList* element);
+static int16_t getLinkedListNElements(void);
+static void copyListToArray(void);
+static int16_t deleteLinkedList(void);
 
 
-// Clear all fields from gatewayList //
-static void clearElementData(list* element)
+// Clear all fields from a single element of the linked list //
+static void clearElementData(linkedList* element)
 {
     element->actionSet.actionsSetID = -1;
-    element->actionSet.bus = NULL;
-    element->actionSet.load = NULL;
-    element->actionSet.eventName = NULL;   
     aux_clearHAPCANFrame(&(element->actionSet.frame));
 }
 
-// Free allocated fields from gatewayList //
-static void freeElementData(list* element)
+// Free allocated fields from a single element of the linked list //
+static void freeElementData(linkedList* element)
 {
-    // bus
-    if(element->actionSet.bus != NULL)
-    {
-        free(element->actionSet.bus);
-        element->actionSet.bus = NULL;
-    }
-    // load
-    if(element->actionSet.load != NULL)
-    {
-        free(element->actionSet.load);
-        element->actionSet.load = NULL;
-    }
-    // eventName
-    if(element->actionSet.eventName != NULL)
-    {
-        free(element->actionSet.eventName);
-        element->actionSet.eventName = NULL;
-    }
+    // Nothing to free
 }
 
-// Add element to a given list
-static void addToList(list* element)
+// Add element to the linked list
+static void addToLinkedList(linkedList* element)
 {
-    list *link;
+    linkedList *link;
     // Create a new element to the list
-    link = (list*)malloc(sizeof(*link));
+    link = (linkedList*)malloc(sizeof(*link));
     // Copy structure data ("shallow" copy)
     *link = *element;   
-    // Create and copy field that are pointers
-    // - BUS
-    if(element->actionSet.bus != NULL)
-    {
-        link->actionSet.bus = strdup(element->actionSet.bus);
-    }
-    else
-    {
-        link->actionSet.bus = NULL;
-    }
-    // - LOAD
-    if(element->actionSet.load != NULL)
-    {
-        link->actionSet.load = strdup(element->actionSet.load);
-    }
-    else
-    {
-        link->actionSet.load = NULL;
-    }
-    // - EVENTNAME
-    if(element->actionSet.eventName != NULL)
-    {
-        link->actionSet.eventName = strdup(element->actionSet.eventName);
-    }
-    else
-    {
-        link->actionSet.eventName = NULL;
-    }
+    // No need to create and copy field that are pointers    
     // Set next in list to previous header (previous first node)
     link->next = head;
     // Point header (first node) to current element (new first node)
     head = link;
 }
 
-// get element from header (after offset positions). NULL means error
-static list* getFromOffset(int offset) 
+// Get the number of elements in the linked list
+static int16_t getLinkedListNElements(void)
 {
-    int li_length;
-    list* current = NULL;
-    // Check offset parameter
-    if( offset < 0 )
-    {
-        return NULL;
-    }
+    int16_t len;
+    linkedList* current = NULL;
     // Check all
-    li_length = 0;
-    for(current = head; current != NULL; current = current->next) 
+    len = 0;
+    if(current != NULL)
     {
-        if(li_length >= offset)
+        for(current = head; current != NULL; current = current->next) 
         {
-            break;
+            len++;        
         }
-        li_length++;        
+    }
+    return len;
+}
+
+// Copy from the Linked List to the Array
+static void copyListToArray(void)
+{
+    int16_t i;
+    linkedList* current;
+    // Check all
+    current = head;
+    if(current != NULL)
+    {
+        for(i = 0; i < harpiActionSetArrayLen; i++)
+        {
+            memcpy(&(harpiActionSetArray[i]), &(current->actionSet), 
+                sizeof(harpiActionSetsData));
+            current = current->next;
+            if(current == NULL)
+            {
+                break;
+            }
+        }
     }
     // Return
     return current;
 }
 
 // Delete list
-static int deleteList(void)
+static int16_t deleteLinkedList(void)
 {
-    list* current;
-    list* next;
+    linkedList* current;
+    linkedList* next;
     
     // Check all
     current = head;
@@ -187,14 +160,20 @@ static int deleteList(void)
 //----------------------------------------------------------------------------//
 void harpiactions_init(void)
 {
-    int check;
+    int16_t check;
     //---------------------------------------------
-    // Delete list - PROTECTED
+    // Delete Linked List and Array - PROTECTED
     //---------------------------------------------
     // LOCK
     pthread_mutex_lock(&g_ActionSets_mutex);
-    // Delete
-    check = deleteList();
+    // Delete Linked List
+    check = deleteLinkedList();
+    if(harpiActionSetArray != NULL)
+    {
+        free(harpiActionSetArray);
+        harpiActionSetArray = NULL;
+        harpiActionSetArrayLen = 0;
+    }
     // UNLOCK
     pthread_mutex_unlock(&g_ActionSets_mutex);
     if( check == EXIT_FAILURE )
@@ -207,50 +186,50 @@ void harpiactions_init(void)
 
 void harpiactions_AddElementToList(harpiActionSetsData *actionSet)
 {
-    list element;
+    linkedList element;
     clearElementData(&element);
-    element.actionSet.actionsSetID = actionSet->actionsSetID;
-    element.actionSet.bus = strdup(actionSet->bus);
-    element.actionSet.load = strdup(actionSet->load);
-    element.actionSet.eventName = strdup(actionSet->eventName);
+    element.actionSet.actionsSetID = actionSet->actionsSetID;    
     memcpy(&element.actionSet.frame, &actionSet->frame, sizeof(hapcanCANData));
     //---------------------------------------------
-    // Add to list - PROTECTED
+    // Add to linked list - PROTECTED
     //---------------------------------------------
     // LOCK
     pthread_mutex_lock(&g_ActionSets_mutex);
     // Add
-    addToList(&element);
+    addToLinkedList(&element);
     // UNLOCK
     pthread_mutex_unlock(&g_ActionSets_mutex);
     // Free data and then return
     freeElementData(&element);
 }
 
+void harpiactions_load(void)
+{
+
+}
+
 void harpiactions_SendActionsFromID(int16_t actionsSetID)
 {
-    list* current;
     bool match;
-    int check;
+    int16_t check;
+    int16_t i;
     unsigned long long millisecondsSinceEpoch;
     // Get Timestamp
     millisecondsSinceEpoch = aux_getmsSinceEpoch();
     // LOCK
     pthread_mutex_lock(&g_ActionSets_mutex);
-    // Get element from initial position
-    current = getFromOffset(0);
-    // Check remaining from offset
-    match = false;
-    while(current != NULL) 
+    // Check all elements of the array
+    for(i = 0; i < harpiActionSetArrayLen; i++)
     {
+        match = false;
         //---------------------------------
         // Check data                    
         //---------------------------------
-        match = (current->actionSet.actionsSetID == actionsSetID);
+        match = (harpiActionSetArray[i].actionsSetID == actionsSetID);
         if(match)
         {
             // Found - Send CAN Frame for action
-            check = hapcan_addToCANWriteBuffer(&(current->actionSet.frame), 
+            check = hapcan_addToCANWriteBuffer(&(harpiActionSetArray[i].frame),
                 millisecondsSinceEpoch);
             if(check != HAPCAN_CAN_RESPONSE)
             {
@@ -259,11 +238,7 @@ void harpiactions_SendActionsFromID(int16_t actionsSetID)
                     "hapcan_addToCANWriteBuffer!\n");
                 #endif
             }
-        }                
-        //*******************************//
-        // Get new current address       //
-        //*******************************//
-        current = current->next;
+        }
     }
     // UNLOCK
     pthread_mutex_unlock(&g_ActionSets_mutex);

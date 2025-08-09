@@ -47,6 +47,13 @@ void harpiactions_init(void);
 void harpiactions_AddElementToList(harpiActionSetsData *actionSet);
 
 /**
+ * Init list and memory after all elements are added with the 
+ * harpiactions_AddElementToList function.
+ * 
+ **/
+void harpiactions_load(void);
+
+/**
  * Search for an harpiActionSetsData data and send the data that matches such
  * an ID
  * 

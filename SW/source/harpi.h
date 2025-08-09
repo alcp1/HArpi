@@ -27,14 +27,17 @@ extern "C" {
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES
 //----------------------------------------------------------------------------//
+typedef enum
+{
+  HARPI_LOAD_TYPE_RELAY = 0,
+  HARPI_LOAD_TYPE_OTHER
+}harpiLoadType_t;
+
 // State Machines and Loads 
 typedef struct  
 {
-    char* stateMachineName;
     int16_t stateMachineID;
-    char* bus;
-    char* load;
-    char* type;
+    harpiLoadType_t type;
     uint8_t node;
     uint8_t group;
     uint8_t channel;
@@ -43,8 +46,6 @@ typedef struct
 // State Machines and Events
 typedef struct  
 {
-    char* stateMachineName;
-    char* eventName;
     int16_t stateMachineID;
     int16_t eventSetID;
 } harpiSMEventsData;
@@ -53,9 +54,6 @@ typedef struct
 typedef struct  
 {
     int16_t actionsSetID;
-    char* bus;
-    char* load;
-    char* eventName;
     hapcanCANData frame;
 } harpiActionSetsData;
 
@@ -63,9 +61,6 @@ typedef struct
 typedef struct  
 {
     int16_t eventsSetID;
-    char* bus;
-    char* load;
-    char* eventName;
     uint8_t fiterCondition[12];
     uint8_t fiter[12];
 } harpiEventSetsData;
@@ -73,8 +68,6 @@ typedef struct
 //States and Actions
 typedef struct  
 {
-    char* stateMachineName;
-    char* eventName;
     int16_t stateMachineID;
     int16_t currentStateID;
     int16_t eventSetID;
@@ -84,10 +77,6 @@ typedef struct
 // State Transitions
 typedef struct  
 {
-    char* stateMachineName;
-    char* currentStateName;
-    char* eventName;
-    char* newStateName;
     int16_t stateMachineID;
     int16_t currentStateID;
     int16_t eventSetID;

@@ -291,6 +291,24 @@ static csvconfig_file_section_t getCSVSection(char *str)
     return section;
 }
 
+/**
+ * Function to get the load type for a given string
+ **/
+static harpiLoadType_t getLoadType(char *str)
+{
+    harpiLoadType_t type;
+    // Find out the section
+    if (strcmp(str, "Relay") == 0)
+    {
+        type = HARPI_LOAD_TYPE_RELAY;
+    }    
+    else
+    {
+        type = HARPI_LOAD_TYPE_OTHER;
+    }
+    return type;
+}
+
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
