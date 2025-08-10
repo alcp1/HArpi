@@ -913,13 +913,13 @@ void csvconfig_reload(void)
         {
             // Fill offsets - last max StateMachineID
             a_csvconfigFileData[i + 1].last_maxStateMachineID = 
-                a_csvconfigFileData[i].last_maxStateMachineID + 1;
+                fileData.new_maxStateMachineID + 1;
             // Fill offsets - last max ActionSetID
             a_csvconfigFileData[i + 1].last_maxActionSetID = 
-                a_csvconfigFileData[i].last_maxActionSetID + 1;
+                fileData.new_maxActionSetID + 1;
             // Fill offsets - last max EventSetID
             a_csvconfigFileData[i + 1].last_maxEventSetID = 
-                a_csvconfigFileData[i].last_maxEventSetID + 1;
+                fileData.new_maxEventSetID + 1;
             // Fill new maximum values
             a_csvconfigFileData[i + 1].new_maxStateMachineID = 0;         
             a_csvconfigFileData[i + 1].new_maxActionSetID = 0;
