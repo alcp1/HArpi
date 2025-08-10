@@ -210,38 +210,57 @@ void harpiactions_load(void)
 
 void harpiactions_SendActionsFromID(int16_t actionsSetID)
 {
-    bool match;
     int16_t check;
     int16_t i;
     unsigned long long millisecondsSinceEpoch;
+    int16_t frameCount;
+    hapcanCANData* frames;
     // Get Timestamp
     millisecondsSinceEpoch = aux_getmsSinceEpoch();
+    //------------------------------------------------
+    // Avoid nested mutex locks from g_ActionSets_mutex and 
+    // hapcan_addToCANWriteBuffer: First create an array of frames to be sent, 
+    // then send them
+    //------------------------------------------------
+    // 1. Prepare frames to be sent - LOCK needed
+    //------------------------------------------------
+    // Init counter
+    frameCount = 0;
+    // Init frames to be sent - reserve for the same size as 
+    // harpiActionSetArrayLen (worst case - all actions have the same ID)
+    frames = (hapcanCANData*)malloc(harpiActionSetArrayLen * 
+        sizeof(hapcanCANData));
     // LOCK
     pthread_mutex_lock(&g_ActionSets_mutex);
     // Check all elements of the array
     for(i = 0; i < harpiActionSetArrayLen; i++)
     {
-        match = false;
-        //---------------------------------
-        // Check data                    
-        //---------------------------------
-        match = (harpiActionSetArray[i].actionsSetID == actionsSetID);
-        if(match)
+        // Check for a match
+        if(harpiActionSetArray[i].actionsSetID == actionsSetID)
         {
-            // Found - Send CAN Frame for action
-            check = hapcan_addToCANWriteBuffer(&(harpiActionSetArray[i].frame),
-                millisecondsSinceEpoch);
-            if(check != HAPCAN_CAN_RESPONSE)
-            {
-                #ifdef DEBUG_HAPCAN_ERRORS
-                debug_print("harpiactions_SendActionsFromID - ERROR: "
-                    "hapcan_addToCANWriteBuffer!\n");
-                #endif
-            }
+            // Add to frames to be sent
+            memcpy(&(frames[frameCount]), &(harpiActionSetArray[i].frame), 
+                sizeof(hapcanCANData));
+            frameCount++;
         }
     }
     // UNLOCK
     pthread_mutex_unlock(&g_ActionSets_mutex);
-    // return
-    return;
+    //---------------------------------
+    // 2. Send Frames - LOCK not needed
+    //---------------------------------
+    // Check all elements of the array
+    for(i = 0; i < frameCount; i++)
+    {
+        // Found - Send CAN Frame for action
+        check = hapcan_addToCANWriteBuffer(&(harpiActionSetArray[i].frame),
+            millisecondsSinceEpoch);
+        if(check != HAPCAN_CAN_RESPONSE)
+        {
+            #ifdef DEBUG_HAPCAN_ERRORS
+            debug_print("harpiactions_SendActionsFromID - ERROR: "
+                "hapcan_addToCANWriteBuffer!\n");
+            #endif
+        }
+    }    
 }

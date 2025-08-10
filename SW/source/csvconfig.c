@@ -36,6 +36,20 @@
 //----------------------------------------------------------------------------//
 // INTERNAL TYPES
 //----------------------------------------------------------------------------//
+// CSV File Data
+typedef struct  
+{
+    uint16_t n_LinesStateLoads;
+    uint16_t n_LinesStateEvents;
+    uint16_t n_LinesActionSets;
+    uint16_t n_LinesEventSets;
+    uint16_t n_LinesStateActions;
+    uint16_t n_LinesStateTransitions;
+    uint16_t maxStateMachineID;
+    uint16_t maxActionSetID;
+    uint16_t maxEventSetID;
+} csvconfigFileData;
+
 // Error Type
 typedef enum  
 {
@@ -47,6 +61,16 @@ typedef enum
     CSV_SECTION_EVENT_SETS,
     CSV_SECTION_OTHER,
 } csvconfig_file_section_t;
+
+// Field type
+typedef enum  
+{
+    CSV_FIELD_TYPE_INT16 = 0,
+    CSV_FIELD_TYPE_LOAD,
+    CSV_FIELD_TYPE_UINT8_HEX,
+    CSV_FIELD_TYPE_UINT8_DEC,
+    CSV_FIELD_TYPE_CHAR,
+} csvconfig_field_type_t;
 
 //----------------------------------------------------------------------------//
 // INTERNAL GLOBAL VARIABLES
@@ -61,7 +85,15 @@ static char** g_csv_filepath_array;
 static bool areConfigFilesChanged(void);
 static bool isCSVfile(const char *filename);
 static csvconfig_file_section_t getCSVSection(char *str);
-
+static csvconfig_file_section_t processLine(char *line, 
+    csvconfigFileData* fileData);
+static bool processSMLoads(char *line, csvconfigFileData* fileData);
+static bool processSMEvents(char *line, csvconfigFileData* fileData);
+static bool processActionSets(char *line, csvconfigFileData* fileData);
+static bool processStatesActions(char *line, csvconfigFileData* fileData);
+static bool processStatesTransitions(char *line, csvconfigFileData* fileData);
+static bool processEventSets(char *line, csvconfigFileData* fileData);
+static bool processField(char* field, csvconfig_field_type_t fieldtype);
 
 /**
  * Checks if there is a change on any of the csv files. If so, fills 
@@ -309,6 +341,137 @@ static harpiLoadType_t getLoadType(char *str)
     return type;
 }
 
+/**
+ * Function to process a given line of the config file. 
+ * Returns the section processed (CSV_SECTION_OTHER in case of error)
+ * and fills fileData for the fields found.
+ **/
+static csvconfig_file_section_t processLine(char *line, 
+    csvconfigFileData* fileData)
+{
+    char *token;
+    csvconfig_file_section_t section = CSV_SECTION_OTHER;
+    // Remove newline character if present
+    line[strcspn(line, "\n")] = 0;
+    // Parse the line.
+    token = strtok_r(line, ",", &line);
+    if (token != NULL) 
+    {
+        section = getCSVSection(token);
+        switch(section)
+        {
+            case CSV_SECTION_STATE_MACHINES_AND_LOADS:
+                if(!processSMLoads(line, fileData))
+                {
+                    section = CSV_SECTION_OTHER;
+                }
+                break;
+            case CSV_SECTION_STATE_MACHINES_AND_EVENTS:
+                if(!processSMEvents(line, fileData))
+                {
+                    section = CSV_SECTION_OTHER;
+                }
+                break;
+            case CSV_SECTION_ACTION_SETS:
+                if(!processActionSets(line, fileData))
+                {
+                    section = CSV_SECTION_OTHER;
+                }
+                break;
+            case CSV_SECTION_STATES_AND_ACTIONS:
+                if(!processStatesActions(line, fileData))
+                {
+                    section = CSV_SECTION_OTHER;
+                }
+                break;
+            case CSV_SECTION_STATE_TRANSITIONS:
+                if(!processStatesTransitions(line, fileData))
+                {
+                    section = CSV_SECTION_OTHER;
+                }
+                break;
+            case CSV_SECTION_EVENT_SETS:
+                if(!processEventSets(line, fileData))
+                {
+                    section = CSV_SECTION_OTHER;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    return section;
+}
+
+/**
+ * Process lines for "State Machines and Loads"
+ **/
+static bool processSMLoads(char *line, csvconfigFileData* fileData)
+{
+    char *token;
+    char *rest_of_line; // Context pointer for strtok_r
+    size_t len;
+    harpiSMLoadsData data;
+    // initial position - line was processed with strtok a first time
+    len = strlen(line);
+    rest_of_line = &(line[len + 1]);
+    // Get fields
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    // Loop through the line to get all fields    
+    while (token != NULL) 
+    {
+        fields[field_count] = token;
+        field_count++;
+        // Get the next token
+        token = strtok_r(NULL, ",");
+    }
+}
+
+/**
+ * Process lines for "State Machines and Events"
+ **/
+static bool processSMEvents(char *line, csvconfigFileData* fileData)
+{
+
+}
+
+/**
+ * Process lines for "Action Sets"
+ **/
+static bool processActionSets(char *line, csvconfigFileData* fileData)
+{
+
+}
+
+/**
+ * Process lines for "States and Actions"
+ **/
+static bool processStatesActions(char *line, csvconfigFileData* fileData)
+{
+
+}
+
+/**
+ * Process lines for "State Transitions"
+ **/
+static bool processStatesTransitions(char *line, csvconfigFileData* fileData)
+{
+
+}
+
+/**
+ * Process lines for "Event Sets".
+ **/
+static bool processEventSets(char *line, csvconfigFileData* fileData)
+{
+
+}
+
+static bool processField(char* field, csvconfig_field_type_t fieldtype)
+{
+    
+}
+
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
@@ -352,7 +515,7 @@ void csvconfig_reload(void)
     bool isOK;
     char line[MAX_LINE_LEN];
     csvconfigFileData* a_csvconfigFileData;
-    char *token;
+    csvconfigFileData fileData;
     csvconfig_file_section_t section = CSV_SECTION_OTHER;
     //----------------------------------
     // Init Gateways
@@ -406,23 +569,12 @@ void csvconfig_reload(void)
             isOK = false;
             break;
         }
+        // Get the offsets
+        fileData = a_csvconfigFileData[i];
         while(fgets(line, sizeof(line), file) != NULL)
         {
-            // Remove newline character if present
-            line[strcspn(line, "\n")] = 0;
-            // Parse the line.
-            token = strtok(line, ",");
-            if (token != NULL) 
-            {
-                section = getCSVSection(token);
-                if(section == CSV_SECTION_OTHER)
-                {
-                    // Leave processing - unexpected error
-                    isOK = false;
-                    break;
-                }
-            } 
-            else 
+            // Process each line
+            if (processLine(line, &fileData) == CSV_SECTION_OTHER)
             {
                 // Empty file or error reading header
                 #ifdef DEBUG_CVSCONFIG_ERRORS
@@ -433,6 +585,18 @@ void csvconfig_reload(void)
                 isOK = false;
                 break;
             }
+        }
+        // Set the offsets
+        if(i < (g_n_csv_files - 1))
+        {
+            // Fill offsets
+            a_csvconfigFileData[i + 1] = a_csvconfigFileData[i];
+            a_csvconfigFileData[i + 1].n_LinesActionSets = 0;
+            a_csvconfigFileData[i + 1].n_LinesEventSets = 0;
+            a_csvconfigFileData[i + 1].n_LinesStateActions = 0;
+            a_csvconfigFileData[i + 1].n_LinesStateEvents = 0;
+            a_csvconfigFileData[i + 1].n_LinesStateLoads = 0;
+            a_csvconfigFileData[i + 1].n_LinesStateTransitions = 0;
         }
     }
     if(!isOK)

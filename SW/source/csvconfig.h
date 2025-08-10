@@ -27,19 +27,6 @@ extern "C" {
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES
 //----------------------------------------------------------------------------//
-// CSV File Data
-typedef struct  
-{
-    uint16_t n_LinesStateLoads;
-    uint16_t n_LinesStateEvents;
-    uint16_t n_LinesActionSets;
-    uint16_t n_LinesEventSets;
-    uint16_t n_LinesStateActions;
-    uint16_t n_LinesStateTransitions;
-    uint16_t maxStateMachineID;
-    uint16_t maxActionSetID;
-    uint16_t maxEventSetID;
-} csvconfigFileData;
     
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
