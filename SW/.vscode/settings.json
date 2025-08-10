@@ -23,6 +23,7 @@
     ],
     "files.associations": {
         "type_traits": "c",
-        "hapcan.h": "c"
+        "hapcan.h": "c",
+        "stdio.h": "c"
     }
 }

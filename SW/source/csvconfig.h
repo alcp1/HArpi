@@ -27,6 +27,17 @@ extern "C" {
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES
 //----------------------------------------------------------------------------//
+// Section
+typedef enum  
+{
+    CSV_SECTION_STATE_MACHINES_AND_LOADS = 0,
+    CSV_SECTION_STATE_MACHINES_AND_EVENTS,
+    CSV_SECTION_ACTION_SETS,
+    CSV_SECTION_STATES_AND_ACTIONS,
+    CSV_SECTION_STATE_TRANSITIONS,
+    CSV_SECTION_EVENT_SETS,
+    CSV_SECTION_OTHER,
+} csvconfig_file_section_t;
     
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS

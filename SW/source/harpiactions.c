@@ -28,129 +28,45 @@
 //----------------------------------------------------------------------------//
 // INTERNAL TYPES
 //----------------------------------------------------------------------------//
-// Linked List 
-typedef struct linkedList 
-{
-    harpiActionSetsData actionSet;
-    struct linkedList *next;
-} linkedList;
 
 //----------------------------------------------------------------------------//
 // INTERNAL GLOBAL VARIABLES
 //----------------------------------------------------------------------------//
 static pthread_mutex_t g_ActionSets_mutex = PTHREAD_MUTEX_INITIALIZER;
-static linkedList* head = NULL;
 static harpiActionSetsData* harpiActionSetArray = NULL;
 static int16_t harpiActionSetArrayLen = 0;
 
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
-static void clearElementData(linkedList* element);
-static void freeElementData(linkedList* element);
-static void addToLinkedList(linkedList* element);
-static int16_t getLinkedListNElements(void);
-static void copyListToArray(void);
-static int16_t deleteLinkedList(void);
-
-
-// Clear all fields from a single element of the linked list //
-static void clearElementData(linkedList* element)
-{
-    element->actionSet.actionsSetID = -1;
-    aux_clearHAPCANFrame(&(element->actionSet.frame));
-}
-
-// Free allocated fields from a single element of the linked list //
-static void freeElementData(linkedList* element)
-{
-    // Nothing to free
-}
-
-// Add element to the linked list
-static void addToLinkedList(linkedList* element)
-{
-    linkedList *link;
-    // Create a new element to the list
-    link = (linkedList*)malloc(sizeof(*link));
-    // Copy structure data ("shallow" copy)
-    *link = *element;   
-    // No need to create and copy field that are pointers    
-    // Set next in list to previous header (previous first node)
-    link->next = head;
-    // Point header (first node) to current element (new first node)
-    head = link;
-}
-
-// Get the number of elements in the linked list
-static int16_t getLinkedListNElements(void)
-{
-    int16_t len;
-    linkedList* current = NULL;
-    // Check all
-    len = 0;
-    if(current != NULL)
-    {
-        for(current = head; current != NULL; current = current->next) 
-        {
-            len++;        
-        }
-    }
-    return len;
-}
+static void copyListToArray(harpiLinkedList* element);
 
 // Copy from the Linked List to the Array
-static void copyListToArray(void)
+static void copyListToArray(harpiLinkedList* element)
 {
     int16_t i;
-    linkedList* current;
+    harpiLinkedList* current;
     // Check all
-    current = head;
-    if(current != NULL)
+    i = 0;
+    if(element != NULL)
     {
-        for(i = 0; i < harpiActionSetArrayLen; i++)
+        for(current = element; current != NULL; current = current->next) 
         {
-            memcpy(&(harpiActionSetArray[i]), &(current->actionSet), 
-                sizeof(harpiActionSetsData));
-            current = current->next;
-            if(current == NULL)
+            if(current->section == CSV_SECTION_ACTION_SETS)
             {
-                break;
+                if(i >= harpiActionSetArrayLen)
+                {
+                    #ifdef DEBUG_HARPIACTIONS_ERRORS
+                    debug_print("harpiactions_load error!\n");
+                    #endif
+                    break;
+                }
+                memcpy(&(harpiActionSetArray[i]), &(current->actionSetsData), 
+                    sizeof(harpiActionSetsData));
+                i++;
             }
         }
     }
-}
-
-// Delete list
-static int16_t deleteLinkedList(void)
-{
-    linkedList* current;
-    linkedList* next;
-    
-    // Check all
-    current = head;
-    while(current != NULL) 
-    {
-        //*******************************//
-        // Get next structure address    //
-        //*******************************//
-        next = current->next;
-        //*******************************//
-        // Free fields that are pointers //
-        //*******************************//
-        freeElementData(current);
-        //*******************************//
-        // Free structure itself         //
-        //*******************************//
-        free(current);
-        //*******************************//
-        // Get new current address       //
-        //*******************************//
-        current = next;
-        head = current;
-    }    
-    // return
-    return EXIT_SUCCESS;
 }
 
 //----------------------------------------------------------------------------//
@@ -158,14 +74,11 @@ static int16_t deleteLinkedList(void)
 //----------------------------------------------------------------------------//
 void harpiactions_init(void)
 {
-    int16_t check;
     //---------------------------------------------
     // Delete Linked List and Array - PROTECTED
     //---------------------------------------------
     // LOCK
     pthread_mutex_lock(&g_ActionSets_mutex);
-    // Delete Linked List
-    check = deleteLinkedList();
     // Init array
     if(harpiActionSetArray != NULL)
     {
@@ -175,36 +88,10 @@ void harpiactions_init(void)
     harpiActionSetArrayLen = 0;
     // UNLOCK
     pthread_mutex_unlock(&g_ActionSets_mutex);
-    if( check == EXIT_FAILURE )
-    {
-        #ifdef DEBUG_HARPIACTIONS_ERRORS
-        debug_print("harpiactions_init error!\n");
-        #endif
-    }
 }
 
-void harpiactions_AddElementToList(harpiActionSetsData *actionSet)
+void harpiactions_load(harpiLinkedList* element)
 {
-    linkedList element;
-    clearElementData(&element);
-    element.actionSet.actionsSetID = actionSet->actionsSetID;    
-    memcpy(&element.actionSet.frame, &actionSet->frame, sizeof(hapcanCANData));
-    //---------------------------------------------
-    // Add to linked list - PROTECTED
-    //---------------------------------------------
-    // LOCK
-    pthread_mutex_lock(&g_ActionSets_mutex);
-    // Add
-    addToLinkedList(&element);
-    // UNLOCK
-    pthread_mutex_unlock(&g_ActionSets_mutex);
-    // Free data and then return
-    freeElementData(&element);
-}
-
-void harpiactions_load(void)
-{
-    int16_t check;
     //---------------------------------------------
     // Clear array, copy from list to array, delete linked lisk - PROTECTED
     //---------------------------------------------
@@ -217,21 +104,14 @@ void harpiactions_load(void)
         harpiActionSetArray = NULL;
     }
     // Get array size and allocate memory
-    harpiActionSetArrayLen = getLinkedListNElements();
+    harpiActionSetArrayLen = harpi_getLinkedListNElements(
+        CSV_SECTION_ACTION_SETS);
     harpiActionSetArray = (harpiActionSetsData*)malloc(harpiActionSetArrayLen * 
         sizeof(harpiActionSetsData));
     // Create array from list
-    copyListToArray();
-    // Delete Linked List
-    check = deleteLinkedList();
+    copyListToArray(element);
     // UNLOCK
     pthread_mutex_unlock(&g_ActionSets_mutex);
-    if( check == EXIT_FAILURE )
-    {
-        #ifdef DEBUG_HARPIACTIONS_ERRORS
-        debug_print("harpiactions_load error!\n");
-        #endif
-    }
 }
 
 void harpiactions_SendActionsFromID(int16_t actionsSetID)

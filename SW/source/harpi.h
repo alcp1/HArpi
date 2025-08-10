@@ -19,6 +19,7 @@ extern "C" {
 * Includes
 */
 #include <hapcan.h>
+#include <csvconfig.h>
     
 //----------------------------------------------------------------------------//
 // EXTERNAL DEFINITIONS
@@ -60,7 +61,7 @@ typedef struct
 // Event Sets
 typedef struct  
 {
-    int16_t eventsSetID;
+    int16_t eventSetID;
     uint8_t fiterCondition[HAPCAN_FULL_FRAME_LEN];
     uint8_t fiter[HAPCAN_FULL_FRAME_LEN];
 } harpiEventSetsData;
@@ -83,9 +84,55 @@ typedef struct
     int16_t newStateID;
 } harpiStateTransitionsData;
 
+// Linked List Data
+typedef struct harpiLinkedList
+{
+    csvconfig_file_section_t section;
+    harpiSMLoadsData smLoadsData;
+    harpiSMEventsData smEventsData;
+    harpiActionSetsData actionSetsData;
+    harpiEventSetsData eventSetsData;
+    harpiStateActionsData stateActionsData;
+    harpiStateTransitionsData stateTransitionsData;
+    struct harpiLinkedList* next;
+} harpiLinkedList;
+
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
+/**
+ * Init Linked Lists data:
+ * - empty the list and if list is available, free used memory
+ * 
+ * * \param   init_modules  (INPUT) flag to init submodules (true to init all
+ *                              submodules)
+ * 
+ **/
+void harpi_initList(bool init_modules);
+
+/**
+ * Add an element to the linked list from CSV file
+ * 
+ * \param   element   (INPUT) element to be added to the linked list
+ * 
+ **/
+void harpi_addElementToList(harpiLinkedList* element);
+
+/**
+ * Get the number of elements in the linked list for a given section
+ * 
+ * \param   section   (INPUT) section to be matched with linked list elements
+ * 
+ **/
+int16_t harpi_getLinkedListNElements(csvconfig_file_section_t section);
+
+/**
+ * Init list and memory after all elements are added with the 
+ * harpi_AddElementToList function.
+ * 
+ **/
+void harpi_load(void);
+
 
 #ifdef __cplusplus
 }

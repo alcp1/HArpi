@@ -40,28 +40,13 @@
 // CSV File Data
 typedef struct  
 {
-    uint16_t n_LinesStateLoads;
-    uint16_t n_LinesStateEvents;
-    uint16_t n_LinesActionSets;
-    uint16_t n_LinesEventSets;
-    uint16_t n_LinesStateActions;
-    uint16_t n_LinesStateTransitions;
-    uint16_t maxStateMachineID;
-    uint16_t maxActionSetID;
-    uint16_t maxEventSetID;
+    uint16_t last_maxStateMachineID;
+    uint16_t last_maxActionSetID;
+    uint16_t last_maxEventSetID;
+    uint16_t new_maxStateMachineID;
+    uint16_t new_maxActionSetID;
+    uint16_t new_maxEventSetID;
 } csvconfigFileData;
-
-// Error Type
-typedef enum  
-{
-    CSV_SECTION_STATE_MACHINES_AND_LOADS = 0,
-    CSV_SECTION_STATE_MACHINES_AND_EVENTS,
-    CSV_SECTION_ACTION_SETS,
-    CSV_SECTION_STATES_AND_ACTIONS,
-    CSV_SECTION_STATE_TRANSITIONS,
-    CSV_SECTION_EVENT_SETS,
-    CSV_SECTION_OTHER,
-} csvconfig_file_section_t;
 
 // Field type
 typedef enum  
@@ -358,12 +343,7 @@ static csvconfig_file_section_t processLine(char *line,
     csvconfigFileData* fileData)
 {
     char *token;
-    harpiSMLoadsData smLoadsData;
-    harpiSMEventsData smEventsData;
-    harpiActionSetsData actionSetsData;
-    harpiEventSetsData eventSetsData;
-    harpiStateActionsData stateActionsData;
-    harpiStateTransitionsData stateTransitionsData;
+    harpiLinkedList element;
     csvconfig_file_section_t section = CSV_SECTION_OTHER;
     // Remove newline character if present
     line[strcspn(line, "\n")] = 0;
@@ -375,44 +355,50 @@ static csvconfig_file_section_t processLine(char *line,
         switch(section)
         {
             case CSV_SECTION_STATE_MACHINES_AND_LOADS:
-                if(!processSMLoads(line, fileData, &smLoadsData))
+                if(!processSMLoads(line, fileData, &element.smLoadsData))
                 {
                     section = CSV_SECTION_OTHER;
                 }
                 break;
             case CSV_SECTION_STATE_MACHINES_AND_EVENTS:
-                if(!processSMEvents(line, fileData, &smEventsData))
+                if(!processSMEvents(line, fileData, &element.smEventsData))
                 {
                     section = CSV_SECTION_OTHER;
                 }
                 break;
             case CSV_SECTION_ACTION_SETS:
-                if(!processActionSets(line, fileData, &actionSetsData))
+                if(!processActionSets(line, fileData, &element.actionSetsData))
                 {
                     section = CSV_SECTION_OTHER;
                 }
                 break;
             case CSV_SECTION_STATES_AND_ACTIONS:
-                if(!processStatesActions(line, fileData, &stateActionsData))
+                if(!processStatesActions(line, fileData, 
+                    &element.stateActionsData))
                 {
                     section = CSV_SECTION_OTHER;
                 }
                 break;
             case CSV_SECTION_STATE_TRANSITIONS:
                 if(!processStatesTransitions(line, fileData, 
-                    &stateTransitionsData))
+                    &element.stateTransitionsData))
                 {
                     section = CSV_SECTION_OTHER;
                 }
                 break;
             case CSV_SECTION_EVENT_SETS:
-                if(!processEventSets(line, fileData, &eventSetsData))
+                if(!processEventSets(line, fileData, &element.eventSetsData))
                 {
                     section = CSV_SECTION_OTHER;
                 }
                 break;
             default:
                 break;
+        }
+        if(section != CSV_SECTION_OTHER)
+        {
+            element.section = section;
+            harpi_addElementToList(&element);
         }
     }
     return section;
@@ -440,7 +426,11 @@ static bool processSMLoads(char *line, csvconfigFileData* fileData,
     {
         return ret;
     }
-    data->stateMachineID = val;
+    data->stateMachineID = val + fileData->last_maxStateMachineID;
+    if(data->stateMachineID > fileData->new_maxStateMachineID)
+    {
+        fileData->new_maxStateMachineID = data->stateMachineID;
+    }
     // harpiLoadType_t type
     token = strtok_r(rest_of_line, ",", &rest_of_line);
     ret = processField(token, CSV_FIELD_TYPE_LOAD, &val);
@@ -498,7 +488,11 @@ static bool processSMEvents(char *line, csvconfigFileData* fileData,
     {
         return ret;
     }
-    data->stateMachineID = val;
+    data->stateMachineID = val + fileData->last_maxStateMachineID;
+    if(data->stateMachineID > fileData->new_maxStateMachineID)
+    {
+        fileData->new_maxStateMachineID = data->stateMachineID;
+    }
     // int16_t eventSetID
     token = strtok_r(rest_of_line, ",", &rest_of_line);
     ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
@@ -506,7 +500,11 @@ static bool processSMEvents(char *line, csvconfigFileData* fileData,
     {
         return ret;
     }
-    data->eventSetID = val;
+    data->eventSetID = val + fileData->last_maxEventSetID;
+    if(data->eventSetID > fileData->new_maxEventSetID)
+    {
+        fileData->new_maxEventSetID = data->eventSetID;
+    }
     return ret;
 }
 
@@ -534,7 +532,11 @@ static bool processActionSets(char *line, csvconfigFileData* fileData,
     {
         return ret;
     }
-    data->actionsSetID = val;
+    data->actionsSetID = val + fileData->last_maxActionSetID;
+    if(data->actionsSetID > fileData->new_maxActionSetID)
+    {
+        fileData->new_maxActionSetID = data->actionsSetID;
+    }
     // hapcanCANData frame
     for(i = 0; i < HAPCAN_FULL_FRAME_LEN; i++)
     {
@@ -574,7 +576,11 @@ static bool processStatesActions(char *line, csvconfigFileData* fileData,
     {
         return ret;
     }
-    data->stateMachineID = val;
+    data->stateMachineID = val + fileData->last_maxStateMachineID;
+    if(data->stateMachineID > fileData->new_maxStateMachineID)
+    {
+        fileData->new_maxStateMachineID = data->stateMachineID;
+    }
     // int16_t currentStateID
     token = strtok_r(rest_of_line, ",", &rest_of_line);
     ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
@@ -590,7 +596,11 @@ static bool processStatesActions(char *line, csvconfigFileData* fileData,
     {
         return ret;
     }
-    data->eventSetID = val;
+    data->eventSetID = val + fileData->last_maxEventSetID;
+    if(data->eventSetID > fileData->new_maxEventSetID)
+    {
+        fileData->new_maxEventSetID = data->eventSetID;
+    }
     // int16_t actionsSetID
     token = strtok_r(rest_of_line, ",", &rest_of_line);
     ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
@@ -598,7 +608,11 @@ static bool processStatesActions(char *line, csvconfigFileData* fileData,
     {
         return ret;
     }
-    data->actionsSetID = val;
+    data->actionsSetID = val + fileData->last_maxActionSetID;
+    if(data->actionsSetID > fileData->new_maxActionSetID)
+    {
+        fileData->new_maxActionSetID = data->actionsSetID;
+    }
     return ret;
 }
 
@@ -624,7 +638,11 @@ static bool processStatesTransitions(char *line, csvconfigFileData* fileData,
     {
         return ret;
     }
-    data->stateMachineID = val;
+    data->stateMachineID = val + fileData->last_maxStateMachineID;
+    if(data->stateMachineID > fileData->new_maxStateMachineID)
+    {
+        fileData->new_maxStateMachineID = data->stateMachineID;
+    }
     // int16_t currentStateID
     token = strtok_r(rest_of_line, ",", &rest_of_line);
     ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
@@ -640,7 +658,11 @@ static bool processStatesTransitions(char *line, csvconfigFileData* fileData,
     {
         return ret;
     }
-    data->eventSetID = val;
+    data->eventSetID = val + fileData->last_maxEventSetID;
+    if(data->eventSetID > fileData->new_maxEventSetID)
+    {
+        fileData->new_maxEventSetID = data->eventSetID;
+    }
     // int16_t newStateID
     token = strtok_r(rest_of_line, ",", &rest_of_line);
     ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
@@ -668,14 +690,18 @@ static bool processEventSets(char *line, csvconfigFileData* fileData,
     //-------------------------
     // Get fields
     //-------------------------
-    // int16_t eventsSetID
+    // int16_t eventSetID
     token = strtok_r(rest_of_line, ",", &rest_of_line);
     ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
     if(!ret)
     {
         return ret;
     }
-    data->eventsSetID = val;
+    data->eventSetID = val + fileData->last_maxEventSetID;
+    if(data->eventSetID > fileData->new_maxEventSetID)
+    {
+        fileData->new_maxEventSetID = data->eventSetID;
+    }
     // uint8_t fiterCondition[HAPCAN_FULL_FRAME_LEN]
     for(i = 0; i < HAPCAN_FULL_FRAME_LEN; i++)
     {
@@ -833,8 +859,7 @@ void csvconfig_reload(void)
     //----------------------------------
     // Init Gateways
     //----------------------------------
-    harpiactions_init();
-
+    harpi_initList(true);
     //----------------------------------
     // Init CSV File(s) data
     //----------------------------------
@@ -842,15 +867,12 @@ void csvconfig_reload(void)
         sizeof(csvconfigFileData));
     for (i = 0; i < g_n_csv_files; i++)
     {
-        a_csvconfigFileData[i].n_LinesStateLoads = 0;
-        a_csvconfigFileData[i].n_LinesStateEvents = 0;
-        a_csvconfigFileData[i].n_LinesActionSets = 0;
-        a_csvconfigFileData[i].n_LinesEventSets = 0;
-        a_csvconfigFileData[i].n_LinesStateActions = 0;
-        a_csvconfigFileData[i].n_LinesStateTransitions = 0;
-        a_csvconfigFileData[i].maxStateMachineID = 0;
-        a_csvconfigFileData[i].maxActionSetID = 0;
-        a_csvconfigFileData[i].maxEventSetID = 0;
+        a_csvconfigFileData[i].last_maxStateMachineID = 0;
+        a_csvconfigFileData[i].last_maxActionSetID = 0;
+        a_csvconfigFileData[i].last_maxEventSetID = 0;
+        a_csvconfigFileData[i].new_maxStateMachineID = 0;
+        a_csvconfigFileData[i].new_maxActionSetID = 0;
+        a_csvconfigFileData[i].new_maxEventSetID = 0;
     }    
     //----------------------------------
     // Get the CSV File Data for each file
@@ -889,22 +911,34 @@ void csvconfig_reload(void)
         // Set the offsets antil the last file is read
         if(i < (g_n_csv_files - 1))
         {
-            // Fill offsets
-            a_csvconfigFileData[i + 1] = a_csvconfigFileData[i];
-            a_csvconfigFileData[i + 1].n_LinesActionSets = 0;
-            a_csvconfigFileData[i + 1].n_LinesEventSets = 0;
-            a_csvconfigFileData[i + 1].n_LinesStateActions = 0;
-            a_csvconfigFileData[i + 1].n_LinesStateEvents = 0;
-            a_csvconfigFileData[i + 1].n_LinesStateLoads = 0;
-            a_csvconfigFileData[i + 1].n_LinesStateTransitions = 0;
+            // Fill offsets - last max StateMachineID
+            a_csvconfigFileData[i + 1].last_maxStateMachineID = 
+                a_csvconfigFileData[i].last_maxStateMachineID + 1;
+            // Fill offsets - last max ActionSetID
+            a_csvconfigFileData[i + 1].last_maxActionSetID = 
+                a_csvconfigFileData[i].last_maxActionSetID + 1;
+            // Fill offsets - last max EventSetID
+            a_csvconfigFileData[i + 1].last_maxEventSetID = 
+                a_csvconfigFileData[i].last_maxEventSetID + 1;
+            // Fill new maximum values
+            a_csvconfigFileData[i + 1].new_maxStateMachineID = 0;         
+            a_csvconfigFileData[i + 1].new_maxActionSetID = 0;
+            a_csvconfigFileData[i + 1].new_maxEventSetID = 0;
         }
         // close file
         fclose(file);
     }
     if(!isOK)
     {
-        free(a_csvconfigFileData);
-        a_csvconfigFileData = NULL;
-        return;
+        // Init all modules and clear linked list
+        harpi_initList(true);
     }
+    else
+    {
+        // Load all modules and clear linked list
+        harpi_load();
+    }
+    // Free used data
+    free(a_csvconfigFileData);
+    a_csvconfigFileData = NULL;
 }

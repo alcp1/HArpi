@@ -39,19 +39,11 @@ extern "C" {
 void harpiactions_init(void);
 
 /**
- * Add an element to the list that will be used to match frames / topics
- * 
- * \param   actionSet   (INPUT) harpiActionSetsData data
- * 
- **/
-void harpiactions_AddElementToList(harpiActionSetsData *actionSet);
-
-/**
  * Init list and memory after all elements are added with the 
  * harpiactions_AddElementToList function.
  * 
  **/
-void harpiactions_load(void);
+void harpiactions_load(harpiLinkedList* element);
 
 /**
  * Search for an harpiActionSetsData data and send the data that matches such
