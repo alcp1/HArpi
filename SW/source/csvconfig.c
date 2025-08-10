@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <stdint.h>
+#include <limits.h>
 #include <time.h>
 #include <auxiliary.h>
 #include <csvconfig.h>
@@ -87,13 +88,20 @@ static bool isCSVfile(const char *filename);
 static csvconfig_file_section_t getCSVSection(char *str);
 static csvconfig_file_section_t processLine(char *line, 
     csvconfigFileData* fileData);
-static bool processSMLoads(char *line, csvconfigFileData* fileData);
-static bool processSMEvents(char *line, csvconfigFileData* fileData);
-static bool processActionSets(char *line, csvconfigFileData* fileData);
-static bool processStatesActions(char *line, csvconfigFileData* fileData);
-static bool processStatesTransitions(char *line, csvconfigFileData* fileData);
-static bool processEventSets(char *line, csvconfigFileData* fileData);
-static bool processField(char* field, csvconfig_field_type_t fieldtype);
+static bool processSMLoads(char *line, csvconfigFileData* fileData, 
+    harpiSMLoadsData* data);
+static bool processSMEvents(char *line, csvconfigFileData* fileData, 
+    harpiSMEventsData* data);
+static bool processActionSets(char *line, csvconfigFileData* fileData,
+    harpiActionSetsData* data);
+static bool processStatesActions(char *line, csvconfigFileData* fileData, 
+    harpiStateActionsData* data);
+static bool processStatesTransitions(char *line, csvconfigFileData* fileData, 
+    harpiStateTransitionsData* data);
+static bool processEventSets(char *line, csvconfigFileData* fileData, 
+    harpiEventSetsData* data);
+static bool processField(char* field, csvconfig_field_type_t fieldtype, 
+    int16_t* value);
 
 /**
  * Checks if there is a change on any of the csv files. If so, fills 
@@ -350,6 +358,12 @@ static csvconfig_file_section_t processLine(char *line,
     csvconfigFileData* fileData)
 {
     char *token;
+    harpiSMLoadsData smLoadsData;
+    harpiSMEventsData smEventsData;
+    harpiActionSetsData actionSetsData;
+    harpiEventSetsData eventSetsData;
+    harpiStateActionsData stateActionsData;
+    harpiStateTransitionsData stateTransitionsData;
     csvconfig_file_section_t section = CSV_SECTION_OTHER;
     // Remove newline character if present
     line[strcspn(line, "\n")] = 0;
@@ -361,37 +375,38 @@ static csvconfig_file_section_t processLine(char *line,
         switch(section)
         {
             case CSV_SECTION_STATE_MACHINES_AND_LOADS:
-                if(!processSMLoads(line, fileData))
+                if(!processSMLoads(line, fileData, &smLoadsData))
                 {
                     section = CSV_SECTION_OTHER;
                 }
                 break;
             case CSV_SECTION_STATE_MACHINES_AND_EVENTS:
-                if(!processSMEvents(line, fileData))
+                if(!processSMEvents(line, fileData, &smEventsData))
                 {
                     section = CSV_SECTION_OTHER;
                 }
                 break;
             case CSV_SECTION_ACTION_SETS:
-                if(!processActionSets(line, fileData))
+                if(!processActionSets(line, fileData, &actionSetsData))
                 {
                     section = CSV_SECTION_OTHER;
                 }
                 break;
             case CSV_SECTION_STATES_AND_ACTIONS:
-                if(!processStatesActions(line, fileData))
+                if(!processStatesActions(line, fileData, &stateActionsData))
                 {
                     section = CSV_SECTION_OTHER;
                 }
                 break;
             case CSV_SECTION_STATE_TRANSITIONS:
-                if(!processStatesTransitions(line, fileData))
+                if(!processStatesTransitions(line, fileData, 
+                    &stateTransitionsData))
                 {
                     section = CSV_SECTION_OTHER;
                 }
                 break;
             case CSV_SECTION_EVENT_SETS:
-                if(!processEventSets(line, fileData))
+                if(!processEventSets(line, fileData, &eventSetsData))
                 {
                     section = CSV_SECTION_OTHER;
                 }
@@ -406,70 +421,369 @@ static csvconfig_file_section_t processLine(char *line,
 /**
  * Process lines for "State Machines and Loads"
  **/
-static bool processSMLoads(char *line, csvconfigFileData* fileData)
+static bool processSMLoads(char *line, csvconfigFileData* fileData, 
+    harpiSMLoadsData* data)
 {
     char *token;
     char *rest_of_line; // Context pointer for strtok_r
-    size_t len;
-    harpiSMLoadsData data;
-    // initial position - line was processed with strtok a first time
-    len = strlen(line);
-    rest_of_line = &(line[len + 1]);
+    bool ret = false;
+    int16_t val;
+    // initial position - line was processed with strtok_r a first time
+    rest_of_line = line;
+    //-------------------------
     // Get fields
+    //-------------------------
+    // int16_t stateMachineID
     token = strtok_r(rest_of_line, ",", &rest_of_line);
-    // Loop through the line to get all fields    
-    while (token != NULL) 
+    ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
+    if(!ret)
     {
-        fields[field_count] = token;
-        field_count++;
-        // Get the next token
-        token = strtok_r(NULL, ",");
+        return ret;
     }
+    data->stateMachineID = val;
+    // harpiLoadType_t type
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_LOAD, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->type = (harpiLoadType_t)(val);
+    // uint8_t node
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_UINT8_HEX, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->node = (uint8_t)(val);
+    // uint8_t group
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_UINT8_HEX, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->group = (uint8_t)(val);
+    // uint8_t channel
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_UINT8_DEC, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->channel = (uint8_t)(val);
+    return ret;
 }
 
 /**
  * Process lines for "State Machines and Events"
  **/
-static bool processSMEvents(char *line, csvconfigFileData* fileData)
+static bool processSMEvents(char *line, csvconfigFileData* fileData, 
+    harpiSMEventsData* data)
 {
-
+    char *token;
+    char *rest_of_line; // Context pointer for strtok_r
+    bool ret = false;
+    int16_t val;
+    // initial position - line was processed with strtok_r a first time
+    rest_of_line = line;
+    //-------------------------
+    // Get fields
+    //-------------------------
+    // int16_t stateMachineID
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->stateMachineID = val;
+    // int16_t eventSetID
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->eventSetID = val;
+    return ret;
 }
 
 /**
  * Process lines for "Action Sets"
  **/
-static bool processActionSets(char *line, csvconfigFileData* fileData)
+static bool processActionSets(char *line, csvconfigFileData* fileData,
+    harpiActionSetsData* data)
 {
-
+    char *token;
+    char *rest_of_line; // Context pointer for strtok_r
+    bool ret = false;
+    int16_t val;
+    int16_t i;
+    uint8_t bytesFrame[HAPCAN_FULL_FRAME_LEN];    
+    // initial position - line was processed with strtok_r a first time
+    rest_of_line = line;
+    //-------------------------
+    // Get fields
+    //-------------------------
+    // int16_t actionsSetID
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->actionsSetID = val;
+    // hapcanCANData frame
+    for(i = 0; i < HAPCAN_FULL_FRAME_LEN; i++)
+    {
+        token = strtok_r(rest_of_line, ",", &rest_of_line);
+        ret = processField(token, CSV_FIELD_TYPE_UINT8_HEX, &val);
+        if(!ret)
+        {
+            return ret;
+        }
+        bytesFrame[i] = (uint8_t)(val);
+    }
+    // convert byte array to hapcan frame
+    aux_clearHAPCANFrame(&(data->frame));
+    aux_getHAPCANFromBytes(bytesFrame, &(data->frame));
+    return ret;
 }
 
 /**
  * Process lines for "States and Actions"
  **/
-static bool processStatesActions(char *line, csvconfigFileData* fileData)
+static bool processStatesActions(char *line, csvconfigFileData* fileData, 
+    harpiStateActionsData* data)
 {
-
+    char *token;
+    char *rest_of_line; // Context pointer for strtok_r
+    bool ret = false;
+    int16_t val;
+    // initial position - line was processed with strtok_r a first time
+    rest_of_line = line;
+    //-------------------------
+    // Get fields
+    //-------------------------
+    // int16_t stateMachineID
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->stateMachineID = val;
+    // int16_t currentStateID
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->currentStateID = val;
+    // int16_t eventSetID
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->eventSetID = val;
+    // int16_t actionsSetID
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->actionsSetID = val;
+    return ret;
 }
 
 /**
  * Process lines for "State Transitions"
  **/
-static bool processStatesTransitions(char *line, csvconfigFileData* fileData)
+static bool processStatesTransitions(char *line, csvconfigFileData* fileData, 
+    harpiStateTransitionsData* data)
 {
-
+    char *token;
+    char *rest_of_line; // Context pointer for strtok_r
+    bool ret = false;
+    int16_t val;
+    // initial position - line was processed with strtok_r a first time
+    rest_of_line = line;
+    //-------------------------
+    // Get fields
+    //-------------------------
+    // int16_t stateMachineID
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->stateMachineID = val;
+    // int16_t currentStateID
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->currentStateID = val;
+    // int16_t eventSetID
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->eventSetID = val;
+    // int16_t newStateID
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->newStateID = val;
+    return ret;
 }
 
 /**
  * Process lines for "Event Sets".
  **/
-static bool processEventSets(char *line, csvconfigFileData* fileData)
+static bool processEventSets(char *line, csvconfigFileData* fileData, 
+    harpiEventSetsData* data)
 {
-
+    char *token;
+    char *rest_of_line; // Context pointer for strtok_r
+    bool ret = false;
+    int16_t val;
+    int16_t i; 
+    // initial position - line was processed with strtok_r a first time
+    rest_of_line = line;
+    //-------------------------
+    // Get fields
+    //-------------------------
+    // int16_t eventsSetID
+    token = strtok_r(rest_of_line, ",", &rest_of_line);
+    ret = processField(token, CSV_FIELD_TYPE_INT16, &val);
+    if(!ret)
+    {
+        return ret;
+    }
+    data->eventsSetID = val;
+    // uint8_t fiterCondition[HAPCAN_FULL_FRAME_LEN]
+    for(i = 0; i < HAPCAN_FULL_FRAME_LEN; i++)
+    {
+        token = strtok_r(rest_of_line, ",", &rest_of_line);
+        ret = processField(token, CSV_FIELD_TYPE_CHAR, &val);
+        if(!ret)
+        {
+            return ret;
+        }
+        data->fiterCondition[i] = (uint8_t)(val);
+    }
+    // uint8_t fiter[HAPCAN_FULL_FRAME_LEN]
+    for(i = 0; i < HAPCAN_FULL_FRAME_LEN; i++)
+    {
+        token = strtok_r(rest_of_line, ",", &rest_of_line);
+        ret = processField(token, CSV_FIELD_TYPE_UINT8_HEX, &val);
+        if(!ret)
+        {
+            return ret;
+        }
+        data->fiter[i] = (uint8_t)(val);
+    }
+    return ret;
 }
 
-static bool processField(char* field, csvconfig_field_type_t fieldtype)
+static bool processField(char* field, csvconfig_field_type_t fieldtype, 
+    int16_t* value)
 {
-    
+    bool ret;
+    char *endptr;
+    ret = false;
+    long val;
+    uint8_t byte;
+    int test;
+    switch(fieldtype)
+    {
+        case CSV_FIELD_TYPE_INT16:
+            // Convert string to unsigned long - Base 10
+            val = strtol(field, &endptr, 10);
+            // Check for conversion errors
+            if( (endptr == field) || (*endptr != '\0') || (val > USHRT_MAX) || 
+                (val < 0) )
+            {
+                ret = false;
+            }
+            else
+            {
+                *value = (int16_t)val;
+                ret = true;
+            }
+            break;
+        case CSV_FIELD_TYPE_LOAD:
+            val = (long)(getLoadType(field));
+            if(val == HARPI_LOAD_TYPE_OTHER)
+            {
+                ret = false;
+            }
+            else
+            {
+                *value = (int16_t)val;
+                ret = true;
+            }
+            break;
+        case CSV_FIELD_TYPE_UINT8_HEX:
+            // Use %hhx to read a hexadecimal value into a uint8_t
+            // The '2' in %2hhx ensures that exactly two characters are read
+            test = sscanf(field, "%2hhx", &byte);
+            if( (test != 1) || (byte > UCHAR_MAX) || (byte < 0) )
+            {
+                ret = false;
+            }
+            else
+            {
+                *value = (int16_t)byte;
+                ret = true;
+            }
+
+            break;
+        case CSV_FIELD_TYPE_UINT8_DEC:
+            // Convert string to unsigned long - Base 10
+            val = strtol(field, &endptr, 10);
+            // Check for conversion errors
+            if( (endptr == field) || (*endptr != '\0') || (val > UCHAR_MAX) || 
+                (val < 0) )
+            {
+                ret = false;
+            }
+            else
+            {
+                *value = (int16_t)val;
+                ret = true;
+            }
+            break;
+        case CSV_FIELD_TYPE_CHAR:
+            if(strlen(field) != 1)
+            {
+                ret = false;
+            }
+            else
+            {
+                *value = (int16_t)(field[0]);
+                ret = true;
+            }
+            break;
+        default:    
+            break;
+    }
+    return ret;
 }
 
 //----------------------------------------------------------------------------//
@@ -516,7 +830,6 @@ void csvconfig_reload(void)
     char line[MAX_LINE_LEN];
     csvconfigFileData* a_csvconfigFileData;
     csvconfigFileData fileData;
-    csvconfig_file_section_t section = CSV_SECTION_OTHER;
     //----------------------------------
     // Init Gateways
     //----------------------------------
@@ -529,7 +842,7 @@ void csvconfig_reload(void)
         sizeof(csvconfigFileData));
     for (i = 0; i < g_n_csv_files; i++)
     {
-        a_csvconfigFileData[i].n_LinesActionSets = 0;
+        a_csvconfigFileData[i].n_LinesStateLoads = 0;
         a_csvconfigFileData[i].n_LinesStateEvents = 0;
         a_csvconfigFileData[i].n_LinesActionSets = 0;
         a_csvconfigFileData[i].n_LinesEventSets = 0;
@@ -556,19 +869,6 @@ void csvconfig_reload(void)
             isOK = false;
             break;
         }
-        // Read header line (if any)
-        if (fgets(line, sizeof(line), file) == NULL) 
-        {
-            fclose(file);
-            // Empty file or error reading header
-            #ifdef DEBUG_CVSCONFIG_ERRORS
-            debug_print("cvsconfig - ERROR: reading file %s!\n", 
-                g_csv_filepath_array[i]);
-            #endif
-            // Leave processing - unexpected error
-            isOK = false;
-            break;
-        }
         // Get the offsets
         fileData = a_csvconfigFileData[i];
         while(fgets(line, sizeof(line), file) != NULL)
@@ -586,7 +886,7 @@ void csvconfig_reload(void)
                 break;
             }
         }
-        // Set the offsets
+        // Set the offsets antil the last file is read
         if(i < (g_n_csv_files - 1))
         {
             // Fill offsets
@@ -598,6 +898,8 @@ void csvconfig_reload(void)
             a_csvconfigFileData[i + 1].n_LinesStateLoads = 0;
             a_csvconfigFileData[i + 1].n_LinesStateTransitions = 0;
         }
+        // close file
+        fclose(file);
     }
     if(!isOK)
     {

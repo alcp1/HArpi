@@ -29,7 +29,7 @@ extern "C" {
 //----------------------------------------------------------------------------//
 typedef enum
 {
-  HARPI_LOAD_TYPE_RELAY = 0,
+  HARPI_LOAD_TYPE_RELAY = 0, // "Relay"
   HARPI_LOAD_TYPE_OTHER
 }harpiLoadType_t;
 
@@ -61,8 +61,8 @@ typedef struct
 typedef struct  
 {
     int16_t eventsSetID;
-    uint8_t fiterCondition[12];
-    uint8_t fiter[12];
+    uint8_t fiterCondition[HAPCAN_FULL_FRAME_LEN];
+    uint8_t fiter[HAPCAN_FULL_FRAME_LEN];
 } harpiEventSetsData;
 
 //States and Actions

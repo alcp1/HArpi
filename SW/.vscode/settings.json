@@ -20,5 +20,9 @@
             "binaryPath": "/home/pi/HArpi/SW/out/HArpi",
             "binaryArgs": []
         }
-    ]
+    ],
+    "files.associations": {
+        "type_traits": "c",
+        "hapcan.h": "c"
+    }
 }

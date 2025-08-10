@@ -119,8 +119,6 @@ static void copyListToArray(void)
             }
         }
     }
-    // Return
-    return current;
 }
 
 // Delete list
@@ -168,12 +166,13 @@ void harpiactions_init(void)
     pthread_mutex_lock(&g_ActionSets_mutex);
     // Delete Linked List
     check = deleteLinkedList();
+    // Init array
     if(harpiActionSetArray != NULL)
     {
         free(harpiActionSetArray);
         harpiActionSetArray = NULL;
-        harpiActionSetArrayLen = 0;
     }
+    harpiActionSetArrayLen = 0;
     // UNLOCK
     pthread_mutex_unlock(&g_ActionSets_mutex);
     if( check == EXIT_FAILURE )
@@ -205,7 +204,34 @@ void harpiactions_AddElementToList(harpiActionSetsData *actionSet)
 
 void harpiactions_load(void)
 {
-
+    int16_t check;
+    //---------------------------------------------
+    // Clear array, copy from list to array, delete linked lisk - PROTECTED
+    //---------------------------------------------
+    // LOCK
+    pthread_mutex_lock(&g_ActionSets_mutex);
+    // Clear array
+    if(harpiActionSetArray != NULL)
+    {
+        free(harpiActionSetArray);
+        harpiActionSetArray = NULL;
+    }
+    // Get array size and allocate memory
+    harpiActionSetArrayLen = getLinkedListNElements();
+    harpiActionSetArray = (harpiActionSetsData*)malloc(harpiActionSetArrayLen * 
+        sizeof(harpiActionSetsData));
+    // Create array from list
+    copyListToArray();
+    // Delete Linked List
+    check = deleteLinkedList();
+    // UNLOCK
+    pthread_mutex_unlock(&g_ActionSets_mutex);
+    if( check == EXIT_FAILURE )
+    {
+        #ifdef DEBUG_HARPIACTIONS_ERRORS
+        debug_print("harpiactions_load error!\n");
+        #endif
+    }
 }
 
 void harpiactions_SendActionsFromID(int16_t actionsSetID)
@@ -262,5 +288,8 @@ void harpiactions_SendActionsFromID(int16_t actionsSetID)
                 "hapcan_addToCANWriteBuffer!\n");
             #endif
         }
-    }    
+    }
+    // Free allocated memory
+    free(frames);
+    frames = NULL;
 }

@@ -122,6 +122,14 @@ bool aux_parseValidateIntArray(int *value, const char *inputstr,
 bool aux_getCANFromBytes(uint8_t* data, uint8_t dataLen, struct can_frame* pcf_Frame);
 
 /**
+ * Get HAPCAN CAN Data Struct from Byte Array
+ * \param   b_ptr       pointer to Byte Array
+ *          hCD_ptr     pointer to HAPCAN CAN Data Struct
+ *                      
+ */
+void aux_getHAPCANFromBytes(uint8_t* b_ptr, hapcanCANData* hCD_ptr);
+
+/**
  * Init a CAN Frame structure to 0
  * 
  * \param   pcf_Frame   CAN FRAME to be populated

@@ -266,6 +266,37 @@ bool aux_getCANFromBytes(uint8_t* data, uint8_t dataLen, struct can_frame* pcf_F
     
 }
 
+/* HAPCAN Data from byte array */
+void aux_getHAPCANFromBytes(uint8_t* b_ptr, hapcanCANData* hCD_ptr)
+{
+    int i;
+    int li_dataIndex;
+    i = 0;
+       
+    // Frame Type and Flags
+    hCD_ptr->frametype = (uint16_t)(b_ptr[i])<< 8;
+    i++;
+    hCD_ptr->frametype += (uint16_t)(b_ptr[i] & 0xF0);
+    hCD_ptr->frametype = hCD_ptr->frametype >> 4;
+    hCD_ptr->flags = (b_ptr[i] & 0x0F);
+    i++;
+    
+    // Module
+    hCD_ptr->module = b_ptr[i];
+    i++;
+    
+    // Group
+    hCD_ptr->group = b_ptr[i];
+    i++;
+    
+    // Data
+    for(li_dataIndex = 0; li_dataIndex < HAPCAN_DATA_LEN; li_dataIndex++)
+    {
+        hCD_ptr->data[li_dataIndex] = b_ptr[i];
+        i++;
+    }
+}
+
 /** Init a CAN Frame structure to 0 */
 void aux_clearCANFrame(struct can_frame* pcf_Frame)
 {
