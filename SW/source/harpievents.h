@@ -32,6 +32,14 @@ extern "C" {
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
 /**
+ * Init events buffer (to be called once)
+ * 
+ * \return  EXIT_SUCCESS
+ *          EXIT_FAILURE (Close and Reinit Buffers)
+ **/
+int harpievents_createBuffer(void);
+
+/**
  * Init Gateway data:
  * - empty the list and if list is available, free used memory
  * 

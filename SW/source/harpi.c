@@ -21,6 +21,7 @@
 #include <debug.h>
 #include <harpi.h>
 #include <harpiactions.h>
+#include <harpievents.h>
 
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
@@ -133,6 +134,13 @@ static int16_t deleteHarpiLinkedList(void)
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
+int harpi_initBuffers(void)
+{
+    int check;
+    check = harpievents_createBuffer();
+    return check;
+}
+
 void harpi_initList(bool init_modules)
 {
     int16_t check;
@@ -142,6 +150,7 @@ void harpi_initList(bool init_modules)
     if(init_modules)
     {
         harpiactions_init();
+        harpievents_init();
     }  
     //---------------------------------------------
     // Delete Linked List and Array - PROTECTED
@@ -239,8 +248,9 @@ void harpi_load(void)
     // Init modules, load them - PROTECTED inside each module
     //---------------------------------------------
     // Init and load all modules
-    harpiactions_init();
     harpiactions_load(head);
+    harpievents_load(head);
+
     //---------------------------------------------
     // Clear linked list - PROTECTED inside harpi_initList
     //---------------------------------------------

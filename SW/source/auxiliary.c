@@ -297,6 +297,37 @@ void aux_getHAPCANFromBytes(uint8_t* b_ptr, hapcanCANData* hCD_ptr)
     }
 }
 
+/* Byte array from HAPCAN frame */
+void aux_getBytesFromHAPCAN(hapcanCANData* hCD_ptr, uint8_t* b_ptr)
+{
+    int i;
+    int li_dataIndex;
+
+    // Init byte index
+    i = 0;
+    // Frame Type and Flags
+    b_ptr[i] = (uint8_t)(hCD_ptr->frametype >> 4);
+    i++;
+    b_ptr[i] = (uint8_t)((hCD_ptr->frametype << 4)&(0xF0)); 
+    b_ptr[i] += hCD_ptr->flags; 
+    i++;
+    
+    // Module
+    b_ptr[i] = hCD_ptr->module;
+    i++;
+    
+    // Group
+    b_ptr[i] = hCD_ptr->group;
+    i++;
+    
+    // Data
+    for(li_dataIndex = 0; li_dataIndex < HAPCAN_DATA_LEN; li_dataIndex++)
+    {
+        b_ptr[i] = hCD_ptr->data[li_dataIndex];
+        i++;
+    }
+}
+
 /** Init a CAN Frame structure to 0 */
 void aux_clearCANFrame(struct can_frame* pcf_Frame)
 {

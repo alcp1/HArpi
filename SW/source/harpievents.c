@@ -18,12 +18,14 @@
 #include <limits.h>
 #include <pthread.h>
 #include <auxiliary.h>
+#include <buffer.h>
 #include <debug.h>
 #include <harpievents.h>
 
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
 //----------------------------------------------------------------------------//
+#define HARPI_EVENTS_BUFFER_SIZE 60
 
 //----------------------------------------------------------------------------//
 // INTERNAL TYPES
@@ -35,11 +37,13 @@
 static pthread_mutex_t g_EventSets_mutex = PTHREAD_MUTEX_INITIALIZER;
 static harpiEventSetsData* harpiEventSetArray = NULL;
 static int16_t harpiEventSetArrayLen = 0;
+static int harpiEventsBufferID = -1;
 
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
 static void copyListToArray(harpiLinkedList* element);
+static bool isMatch(harpiEventSetsData* set, hapcanCANData* hapcanData);
 
 // Copy from the Linked List to the Array
 static void copyListToArray(harpiLinkedList* element)
@@ -69,9 +73,109 @@ static void copyListToArray(harpiLinkedList* element)
     }
 }
 
+// Check for a match between event set data and a given hapcan frame
+static bool isMatch(harpiEventSetsData* set, hapcanCANData* hapcanData)
+{
+    bool match;
+    int16_t i;
+    uint8_t frame[HAPCAN_FULL_FRAME_LEN];
+    // Get byte array from HAPCAN Frame
+    aux_getBytesFromHAPCAN(hapcanData, frame);
+    //-----------------------------------------
+    // Check the frame against the event frame
+    //-----------------------------------------
+    // 'x': CAN byte doesn't need checking to FILTER byte (always matched)
+    // 'e':	CAN byte must be identical to FILTER byte (CANx=FILx)
+    // 'n':	CAN byte must be different than FILTER byte (CANx!=FILx)
+    // '<':	CAN byte must be less or equal to FILTER byte (CANx<=FILx)
+    // '>':	CAN byte must be greater or equal to FILTER byte (CANx>=FILx)
+    match = true;
+    for(i = 0; i < HAPCAN_FULL_FRAME_LEN; i++)
+    {
+        switch(set->fiterCondition[i])
+        {
+            case 'x':
+                // Filter condition "x": byte doesn't need checking
+                break;
+            case 'e':
+                // Filter condition "=": has to be equal
+                if(frame[i] != set->fiter[i])
+                {
+                    // Not matched
+                    match = false;
+                }
+                break;
+            case 'n':
+                // Filter condition: "n": has to be different
+                if(frame[i] == set->fiter[i])
+                {
+                    // Not matched
+                    match = false;
+                }
+                break;
+            case '<':
+                // Filter condition: "<": has to be smaller or equal
+                if(frame[i] > set->fiter[i])
+                {
+                    // Not matched
+                    match = false;
+                }
+                break;
+            case '>':
+                // Filter condition: ">": has to be higher or equal
+                if(frame[i] < set->fiter[i])
+                {
+                    // Not matched
+                    match = false;
+                }
+                break;
+            default:
+                // Unknown condition - Not matched
+                match = false;
+                break;
+        }
+        if(!match)
+        {
+            // Leave as soon as a mismatch is detected
+            break;
+        }
+    }
+    // Return
+    return match;
+}
+
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
+int harpievents_createBuffer(void)
+{
+    int check;
+    // Init Buffer
+    if(harpiEventsBufferID < 0)
+    {
+        harpiEventsBufferID = buffer_init(HARPI_EVENTS_BUFFER_SIZE);
+    }
+    // Check buffer - should have ID
+    check = 0;
+    if(harpiEventsBufferID < 0)
+    {
+        #ifdef DEBUG_HARPIEVENTS_ERRORS
+        debug_print("harpievents_createBuffer ERROR - Buffer Error!\n");
+        debug_print("- Buffer: %d\n", harpiEventsBufferID);
+        #endif
+        check = 1;
+    }
+    if(check > 0)
+    {
+        // return error
+        return EXIT_FAILURE;
+    }
+    else
+    {
+        // return OK
+        return EXIT_SUCCESS;
+    }
+}
 
 void harpievents_init(void)
 {
@@ -87,6 +191,8 @@ void harpievents_init(void)
         harpiEventSetArray = NULL;
     }
     harpiEventSetArrayLen = 0;
+    // Clean buffer
+    buffer_clean(harpiEventsBufferID);
     // UNLOCK
     pthread_mutex_unlock(&g_EventSets_mutex);
 }
@@ -118,5 +224,29 @@ void harpievents_load(harpiLinkedList* element)
 void harpievents_handleCAN(hapcanCANData* hapcanData, 
     unsigned long long timestamp)
 {
-    
+    int16_t i;
+    int check;
+    harpiEvent_t event;
+    // Check for a match
+    for(i = 0; i < harpiEventSetArrayLen; i++)
+    {
+        // Check frame
+        if(isMatch(&(harpiEventSetArray[i]), hapcanData))
+        {
+            event.eventSetID = harpiEventSetArray[i].eventSetID;
+            event.type = HARPI_EVENT_CAN;
+            // Match - Add a new event to the buffer
+            check = buffer_push(harpiEventsBufferID, &event, sizeof(event));
+            if( check != BUFFER_OK )
+            {
+                //----------------
+                // FATAL ERROR
+                //----------------
+                #ifdef DEBUG_HARPIEVENTS_ERRORS
+                debug_print("harpievents_handleCAN - Buffer Error!\n");
+                debug_print("- Buffer Index: %d\n", harpiEventsBufferID);
+                #endif
+            }
+        }
+    }
 }

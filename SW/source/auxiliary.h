@@ -130,6 +130,15 @@ bool aux_getCANFromBytes(uint8_t* data, uint8_t dataLen, struct can_frame* pcf_F
 void aux_getHAPCANFromBytes(uint8_t* b_ptr, hapcanCANData* hCD_ptr);
 
 /**
+ * Get Byte array from HAPCAN CAN Data Struct. Byte array needs to have at least
+ * HAPCAN_FULL_FRAME_LEN bytes.
+ * \param       hCD_ptr     pointer to HAPCAN CAN Data Struct
+ *              b_ptr       Byte Array to be filled
+ *                      
+ */
+void aux_getBytesFromHAPCAN(hapcanCANData* hCD_ptr, uint8_t* hSD_ptr);
+
+/**
  * Init a CAN Frame structure to 0
  * 
  * \param   pcf_Frame   CAN FRAME to be populated

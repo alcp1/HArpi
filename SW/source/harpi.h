@@ -28,14 +28,29 @@ extern "C" {
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES
 //----------------------------------------------------------------------------//
+// Load Type
 typedef enum
 {
   HARPI_LOAD_TYPE_RELAY = 0, // "Relay"
   HARPI_LOAD_TYPE_OTHER
 }harpiLoadType_t;
 
-// State Machines and Loads 
+// Event Type
+typedef enum
+{
+  HARPI_EVENT_CAN = 0,
+  HARPI_EVENT_OTHER
+}harpiEventType_t;
+
+// Event (for event processing)
 typedef struct  
+{
+    harpiEventType_t type;
+    int16_t eventSetID;
+} harpiEvent_t;
+
+// State Machines and Loads 
+typedef struct 
 {
     int16_t stateMachineID;
     harpiLoadType_t type;
@@ -100,6 +115,14 @@ typedef struct harpiLinkedList
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
+/**
+ * Init buffers
+ * 
+ * \return  EXIT_SUCCESS
+ *          EXIT_FAILURE (Close and Reinit Buffers)
+ **/
+int harpi_initBuffers(void);
+
 /**
  * Init Linked Lists data:
  * - empty the list and if list is available, free used memory

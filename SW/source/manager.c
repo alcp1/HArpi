@@ -289,14 +289,18 @@ void managerInit(void)
     debug_print("HArpi Build date/time = %s - %s\n", __DATE__, __TIME__);
     #endif
     /**************************************************************************
-     * INIT CONFIG AND GATEWAY
-     *************************************************************************/
-    csvconfig_init();
-    //gateway_init();
-    
-    /**************************************************************************
      * INIT BUFFERS
      *************************************************************************/        
+    // HARPI Buffers
+     for(li_index = 0; li_index < INIT_RETRIES; li_index++)
+    {
+        li_check = harpi_initBuffers();
+        if(li_check == EXIT_SUCCESS)
+        {
+            break;
+        }
+    }
+    // CAN Buffers
     for(li_index = 0; li_index < INIT_RETRIES; li_index++)
     {
         li_check = canbuf_init(0);
@@ -305,7 +309,12 @@ void managerInit(void)
             break;
         }
     }
-    
+
+    /**************************************************************************
+     * INIT CONFIG AND GATEWAY
+     *************************************************************************/
+    csvconfig_init();
+        
     /**************************************************************************
      * INIT THREADS - CREATE AND JOIN
      *************************************************************************/    
