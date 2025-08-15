@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <limits.h>
+#include <pthread.h>
 #include <auxiliary.h>
 #include <debug.h>
 #include <harpievents.h>
@@ -31,68 +32,91 @@
 //----------------------------------------------------------------------------//
 // INTERNAL GLOBAL VARIABLES
 //----------------------------------------------------------------------------//
+static pthread_mutex_t g_EventSets_mutex = PTHREAD_MUTEX_INITIALIZER;
+static harpiEventSetsData* harpiEventSetArray = NULL;
+static int16_t harpiEventSetArrayLen = 0;
 
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
+static void copyListToArray(harpiLinkedList* element);
+
+// Copy from the Linked List to the Array
+static void copyListToArray(harpiLinkedList* element)
+{
+    int16_t i;
+    harpiLinkedList* current;
+    // Check all
+    i = 0;
+    if(element != NULL)
+    {
+        for(current = element; current != NULL; current = current->next) 
+        {
+            if(current->section == CSV_SECTION_EVENT_SETS)
+            {
+                if(i >= harpiEventSetArrayLen)
+                {
+                    #ifdef DEBUG_HARPIEVENTS_ERRORS
+                    debug_print("harpievents_load error!\n");
+                    #endif
+                    break;
+                }
+                memcpy(&(harpiEventSetArray[i]), &(current->eventSetsData), 
+                    sizeof(harpiEventSetsData));
+                i++;
+            }
+        }
+    }
+}
 
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
-/*
- * Add buttons configured in the configuration JSON file to the HAPCAN <--> MQTT
- * gateway
- */
-void harpievents_handleCAN(hapcanCANData* hapcanData, unsigned long long timestamp)
+
+void harpievents_init(void)
 {
-    int check;
-    int i;
-    hapcanCANData hapcanDataOut;
-    bool condition;
+    //---------------------------------------------
+    // Delete Linked List and Array - PROTECTED
+    //---------------------------------------------
+    // LOCK
+    pthread_mutex_lock(&g_EventSets_mutex);
+    // Init array
+    if(harpiEventSetArray != NULL)
+    {
+        free(harpiEventSetArray);
+        harpiEventSetArray = NULL;
+    }
+    harpiEventSetArrayLen = 0;
+    // UNLOCK
+    pthread_mutex_unlock(&g_EventSets_mutex);
+}
 
-    // FIRST IGNORE SYSTEM MESSAGES
+void harpievents_load(harpiLinkedList* element)
+{
+    //---------------------------------------------
+    // Clear array, copy from list to array, delete linked lisk - PROTECTED
+    //---------------------------------------------
+    // LOCK
+    pthread_mutex_lock(&g_EventSets_mutex);
+    // Clear array
+    if(harpiEventSetArray != NULL)
+    {
+        free(harpiEventSetArray);
+        harpiEventSetArray = NULL;
+    }
+    // Get array size and allocate memory
+    harpiEventSetArrayLen = harpi_getLinkedListNElements(
+        CSV_SECTION_EVENT_SETS);
+    harpiEventSetArray = (harpiEventSetsData*)malloc(harpiEventSetArrayLen * 
+        sizeof(harpiEventSetsData));
+    // Create array from list
+    copyListToArray(element);
+    // UNLOCK
+    pthread_mutex_unlock(&g_EventSets_mutex);
+}
 
-    condition = hapcanData->frametype == HAPCAN_BUTTON_FRAME_TYPE;
-    condition = condition && hapcanData->flags == 0x00;
-    condition = condition && hapcanData->module == 0x01;
-    condition = condition && hapcanData->group == 0x01;
-    condition = condition && hapcanData->group == 0x01;
-    condition = condition && hapcanData->data[2] == 0x01;
-    condition = condition && hapcanData->data[3] == 0x00;
-    if(condition)
-    {
-        hapcanDataOut.frametype = 0x400;
-        hapcanDataOut.flags = 0x00;
-        hapcanDataOut.module = 0xA0;
-        hapcanDataOut.group = 0xC0;
-        for(i = 0; i < 8; i++)
-        {
-            hapcanDataOut.data[i] = (uint8_t)i;
-        }
-    }
-    condition = hapcanData->frametype == HAPCAN_BUTTON_FRAME_TYPE;
-    condition = condition && hapcanData->flags == 0x00;
-    condition = condition && hapcanData->module == 0x01;
-    condition = condition && hapcanData->group == 0x01;
-    condition = condition && hapcanData->group == 0x01;
-    condition = condition && hapcanData->data[2] == 0x01;
-    condition = condition && hapcanData->data[3] == 0xFF;
-    if(condition)
-    {
-        hapcanDataOut.frametype = 0x402;
-        hapcanDataOut.flags = 0x00;
-        hapcanDataOut.module = 0xA2;
-        hapcanDataOut.group = 0xC2;
-        for(i = 0; i < 8; i++)
-        {
-            hapcanDataOut.data[i] = 0x10 + (uint8_t)i;
-        }
-    }
-    check = hapcan_addToCANWriteBuffer(&hapcanDataOut, timestamp);
-    if(check != HAPCAN_CAN_RESPONSE)
-    {
-        #ifdef DEBUG_HAPCAN_ERRORS
-        debug_print("hevents_handleCAN - ERROR: addToCANWriteBuffer!\n");
-        #endif
-    }
+void harpievents_handleCAN(hapcanCANData* hapcanData, 
+    unsigned long long timestamp)
+{
+    
 }

@@ -32,6 +32,20 @@ extern "C" {
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
 /**
+ * Init Gateway data:
+ * - empty the list and if list is available, free used memory
+ * 
+ **/
+void harpievents_init(void);
+
+/**
+ * Init list and memory after all elements are added with the 
+ * harpiactions_AddElementToList function.
+ * 
+ **/
+void harpievents_load(harpiLinkedList* element);
+
+/**
  * Check the CAN message received for generating events
  * \param   hapcanData      (INPUT) received HAPCAN Frame
  *          timestamp       (INPUT) Received message timestamp

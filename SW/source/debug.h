@@ -53,6 +53,9 @@ extern "C" {
 
 /* HARPIACTIONS */
 #define DEBUG_HARPIACTIONS_ERRORS
+
+/* HARPIACTIONS */
+#define DEBUG_HARPIEVENTS_ERRORS
     
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES
