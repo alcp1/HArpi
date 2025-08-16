@@ -256,7 +256,6 @@ void harpi_load(void)
     harpievents_load(head);
     harpiloads_load(head);
     harpism_load(head);
-
     //---------------------------------------------
     // Clear linked list - PROTECTED inside harpi_initList
     //---------------------------------------------

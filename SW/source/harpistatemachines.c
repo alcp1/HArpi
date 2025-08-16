@@ -147,21 +147,27 @@ void harpism_init(void)
     // LOCK
     pthread_mutex_lock(&g_SM_mutex);
     // Init arrays
+    //----------------------------------------
     //    - State Machine Events
+    //----------------------------------------
     if(harpiSMEventsArray != NULL)
     {
         free(harpiSMEventsArray);
         harpiSMEventsArray = NULL;
     }
     harpiSMEventsArrayLen = 0;
+    //----------------------------------------
     //    - State Actions
+    //----------------------------------------
     if(harpiSActionsArray != NULL)
     {
         free(harpiSActionsArray);
         harpiSActionsArray = NULL;
     }
     harpiSActionsArrayLen = 0;
+    //----------------------------------------
     //    - State Transitions
+    //----------------------------------------
     if(harpiSTransitionArray != NULL)
     {
         free(harpiSTransitionArray);
@@ -180,6 +186,9 @@ void harpism_load(harpiLinkedList* element)
     //---------------------------------------------
     // LOCK
     pthread_mutex_lock(&g_SM_mutex);
+    //----------------------------------------
+    //    - State Machine Events
+    //----------------------------------------
     // Clear array
     if(harpiSMEventsArray != NULL)
     {
@@ -191,7 +200,37 @@ void harpism_load(harpiLinkedList* element)
         CSV_SECTION_STATE_MACHINES_AND_LOADS);
     harpiSMEventsArray = (harpiSMEventsData*)malloc(harpiSMEventsArrayLen * 
         sizeof(harpiSMEventsData));
-    // Create array from list
+    //----------------------------------------
+    //    - State Actions
+    //----------------------------------------
+    // Clear array
+    if(harpiSActionsArray != NULL)
+    {
+        free(harpiSActionsArray);
+        harpiSActionsArray = NULL;
+    }
+    // Get array size and allocate memory
+    harpiSActionsArrayLen = harpi_getLinkedListNElements(
+        CSV_SECTION_STATES_AND_ACTIONS);
+    harpiSActionsArray = (harpiStateActionsData*)malloc(harpiSActionsArrayLen * 
+        sizeof(harpiStateActionsData));
+    //----------------------------------------
+    //    - State Transitions
+    //----------------------------------------
+    // Clear array
+    if(harpiSTransitionArray != NULL)
+    {
+        free(harpiSTransitionArray);
+        harpiSTransitionArray = NULL;
+    }
+    // Get array size and allocate memory
+    harpiSTransitionArrayLen = harpi_getLinkedListNElements(
+        CSV_SECTION_STATE_TRANSITIONS);
+    harpiSTransitionArray = (harpiStateTransitionsData*)malloc(
+        harpiSTransitionArrayLen * sizeof(harpiStateTransitionsData));
+    //----------------------------------------
+    // Create arrays from list
+    //----------------------------------------
     isOK = copyListToArray(element);
     // UNLOCK
     pthread_mutex_unlock(&g_SM_mutex);
