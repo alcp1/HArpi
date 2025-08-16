@@ -22,6 +22,8 @@
 #include <harpi.h>
 #include <harpiactions.h>
 #include <harpievents.h>
+#include <harpiloads.h>
+#include <harpistatemachines.h>
 
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
@@ -151,6 +153,8 @@ void harpi_initList(bool init_modules)
     {
         harpiactions_init();
         harpievents_init();
+        harpiloads_init();
+        harpism_init();
     }  
     //---------------------------------------------
     // Delete Linked List and Array - PROTECTED
@@ -250,6 +254,8 @@ void harpi_load(void)
     // Init and load all modules
     harpiactions_load(head);
     harpievents_load(head);
+    harpiloads_load(head);
+    harpism_load(head);
 
     //---------------------------------------------
     // Clear linked list - PROTECTED inside harpi_initList

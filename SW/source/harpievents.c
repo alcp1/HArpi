@@ -42,16 +42,18 @@ static int harpiEventsBufferID = -1;
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
-static void copyListToArray(harpiLinkedList* element);
+static bool copyListToArray(harpiLinkedList* element);
 static bool isMatch(harpiEventSetsData* set, hapcanCANData* hapcanData);
 
 // Copy from the Linked List to the Array
-static void copyListToArray(harpiLinkedList* element)
+static bool copyListToArray(harpiLinkedList* element)
 {
     int16_t i;
     harpiLinkedList* current;
+    bool isOK;
     // Check all
     i = 0;
+    isOK = true;
     if(element != NULL)
     {
         for(current = element; current != NULL; current = current->next) 
@@ -63,6 +65,7 @@ static void copyListToArray(harpiLinkedList* element)
                     #ifdef DEBUG_HARPIEVENTS_ERRORS
                     debug_print("harpievents_load error!\n");
                     #endif
+                    isOK = false;
                     break;
                 }
                 memcpy(&(harpiEventSetArray[i]), &(current->eventSetsData), 
@@ -71,6 +74,7 @@ static void copyListToArray(harpiLinkedList* element)
             }
         }
     }
+    return isOK;
 }
 
 // Check for a match between event set data and a given hapcan frame
@@ -199,6 +203,7 @@ void harpievents_init(void)
 
 void harpievents_load(harpiLinkedList* element)
 {
+    bool isOK;
     //---------------------------------------------
     // Clear array, copy from list to array, delete linked lisk - PROTECTED
     //---------------------------------------------
@@ -216,9 +221,14 @@ void harpievents_load(harpiLinkedList* element)
     harpiEventSetArray = (harpiEventSetsData*)malloc(harpiEventSetArrayLen * 
         sizeof(harpiEventSetsData));
     // Create array from list
-    copyListToArray(element);
+    isOK = copyListToArray(element);
     // UNLOCK
     pthread_mutex_unlock(&g_EventSets_mutex);
+    // Clear data if copy had an error
+    if(!isOK)
+    {
+        harpievents_init();
+    }
 }
 
 void harpievents_handleCAN(hapcanCANData* hapcanData, 
@@ -226,12 +236,20 @@ void harpievents_handleCAN(hapcanCANData* hapcanData,
 {
     int16_t i;
     int check;
+    bool match;
     harpiEvent_t event;
     // Check for a match
     for(i = 0; i < harpiEventSetArrayLen; i++)
     {
-        // Check frame
-        if(isMatch(&(harpiEventSetArray[i]), hapcanData))
+        match = false;
+        // LOCK
+        pthread_mutex_lock(&g_EventSets_mutex);
+        // Compare Frames
+        match = isMatch(&(harpiEventSetArray[i]), hapcanData);
+        // UNLOCK
+        pthread_mutex_unlock(&g_EventSets_mutex);
+        // Check compared frames
+        if(match)
         {
             event.eventSetID = harpiEventSetArray[i].eventSetID;
             event.type = HARPI_EVENT_CAN;

@@ -31,6 +31,19 @@ extern "C" {
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
+/**
+ * Init data:
+ * - empty the list and if list is available, free used memory
+ * 
+ **/
+void harpism_init(void);
+
+/**
+ * Load list and memory with linked list data
+ * \param   element (INPUT) The linked list data
+ * 
+ **/
+void harpism_load(harpiLinkedList* element);
 
 
 

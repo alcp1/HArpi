@@ -39,15 +39,17 @@ static int16_t harpiActionSetArrayLen = 0;
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
-static void copyListToArray(harpiLinkedList* element);
+static bool copyListToArray(harpiLinkedList* element);
 
 // Copy from the Linked List to the Array
-static void copyListToArray(harpiLinkedList* element)
+static bool copyListToArray(harpiLinkedList* element)
 {
     int16_t i;
     harpiLinkedList* current;
+    bool isOK;
     // Check all
     i = 0;
+    isOK = true;
     if(element != NULL)
     {
         for(current = element; current != NULL; current = current->next) 
@@ -59,6 +61,7 @@ static void copyListToArray(harpiLinkedList* element)
                     #ifdef DEBUG_HARPIACTIONS_ERRORS
                     debug_print("harpiactions_load error!\n");
                     #endif
+                    isOK = false;
                     break;
                 }
                 memcpy(&(harpiActionSetArray[i]), &(current->actionSetsData), 
@@ -67,6 +70,7 @@ static void copyListToArray(harpiLinkedList* element)
             }
         }
     }
+    return isOK;
 }
 
 //----------------------------------------------------------------------------//
@@ -92,6 +96,7 @@ void harpiactions_init(void)
 
 void harpiactions_load(harpiLinkedList* element)
 {
+    bool isOK;
     //---------------------------------------------
     // Clear array, copy from list to array, delete linked lisk - PROTECTED
     //---------------------------------------------
@@ -109,9 +114,14 @@ void harpiactions_load(harpiLinkedList* element)
     harpiActionSetArray = (harpiActionSetsData*)malloc(harpiActionSetArrayLen * 
         sizeof(harpiActionSetsData));
     // Create array from list
-    copyListToArray(element);
+    isOK = copyListToArray(element);
     // UNLOCK
     pthread_mutex_unlock(&g_ActionSets_mutex);
+    // Clear data if copy had an error
+    if(!isOK)
+    {
+        harpiactions_init();
+    }
 }
 
 void harpiactions_SendActionsFromID(int16_t actionsSetID)

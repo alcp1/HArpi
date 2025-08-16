@@ -49,7 +49,7 @@ typedef struct
     int16_t eventSetID;
 } harpiEvent_t;
 
-// State Machines and Loads 
+// State Machines and Loads
 typedef struct 
 {
     int16_t stateMachineID;
@@ -81,7 +81,7 @@ typedef struct
     uint8_t fiter[HAPCAN_FULL_FRAME_LEN];
 } harpiEventSetsData;
 
-//States and Actions
+// States and Actions
 typedef struct  
 {
     int16_t stateMachineID;

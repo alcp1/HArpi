@@ -32,15 +32,15 @@ extern "C" {
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
 /**
- * Init Gateway data:
+ * Init data:
  * - empty the list and if list is available, free used memory
  * 
  **/
 void harpiactions_init(void);
 
 /**
- * Init list and memory after all elements are added with the 
- * harpiactions_AddElementToList function.
+ * Load list and memory with linked list data
+ * \param   element (INPUT) The linked list data
  * 
  **/
 void harpiactions_load(harpiLinkedList* element);
