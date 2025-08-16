@@ -221,29 +221,23 @@ void* managerHandleCAN0Buffers(void *arg)
 void* managerHandleHAPCANPeriodic(void *arg)
 {
     int check;
-    bool enable;
     stateCAN_t sc_state;
     while(1)
     {
-        // Check if this feature is enabled:
-        enable = false;
-        if(enable)
-        {
-            /* STATE CHECK AND RE-INIT */
-            check = canbuf_getState(0, &sc_state);
-            if( (check == EXIT_SUCCESS) && (sc_state == CAN_CONNECTED) )
-            {                                    
-                //----------------------------------------------------------
-                // Check for messages to be sent to CAN Bus for getting
-                // module status
-                //----------------------------------------------------------
-                // Error is handled within the functions
-                harpi_periodic();
-            }
+        /* STATE CHECK AND RE-INIT */
+        check = canbuf_getState(0, &sc_state);
+        if( (check == EXIT_SUCCESS) && (sc_state == CAN_CONNECTED) )
+        {                                    
+            //----------------------------------------------------------
+            // Check for messages to be sent to CAN Bus for getting
+            // module status
+            //----------------------------------------------------------
+            // Error is handled within the functions
+            harpi_periodic();
         }
-        // 50ms Loop - Give time for the modules to respond and to not increase
+        // 200ms Loop - Give time for the modules to respond and to not increase
         // Bus load too much (some modules send 17 CAN messages for its status)
-        usleep(50000);
+        usleep(200000);
     }
 }
 

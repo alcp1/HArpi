@@ -24,6 +24,8 @@
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
 //----------------------------------------------------------------------------//
+#define CHANNEL_BYTE 2
+#define STATUS_BYTE 3
 
 //----------------------------------------------------------------------------//
 // INTERNAL TYPES
@@ -248,18 +250,182 @@ void harpiloads_load(harpiLinkedList* element)
 
 void harpiloads_periodic(void)
 {
-
+    int16_t i_Load;
+    uint8_t node;
+    uint8_t group;
+    bool update;
+    hapcanCANData hd_result;
+    unsigned long long timestamp;
+    int ret;
+    // Init
+    ret = HAPCAN_NO_RESPONSE;
+    update = false;
+    // LOCK
+    pthread_mutex_lock(&g_SMLoads_mutex);
+    // Check all loads
+    if(loadsStatusArrayLen > 0)
+    {
+        for(i_Load = 0; i_Load < loadsStatusArrayLen; i_Load++)
+        {
+            if(loadsStatusArray[i_Load].status == HARPI_LOAD_STATUS_UNDEFINED)
+            {
+                update = true;
+                node = loadsStatusArray[i_Load].load.node;
+                group = loadsStatusArray[i_Load].load.group;
+                break;
+            }
+        }
+    }
+    // UNLOCK
+    pthread_mutex_unlock(&g_SMLoads_mutex);
+    // Check if update is needed
+    if(update)
+    {
+        // Request STATUS update for the given module
+        hapcan_getSystemFrame(&hd_result,
+                HAPCAN_STATUS_REQUEST_NODE_FRAME_TYPE, node, group);
+        // Get Timestamp
+        timestamp = aux_getmsSinceEpoch();
+        ret = hapcan_addToCANWriteBuffer(&hd_result, timestamp);
+        if(ret == HAPCAN_CAN_RESPONSE_ERROR)
+        {
+            #ifdef DEBUG_HARPILOADS_ERRORS
+            debug_print("harpiloads_periodic error: CAN Write!\n");
+            #endif
+        }
+    }    
 }
 
 void harpiloads_handleCAN(hapcanCANData* hapcanData, 
         unsigned long long timestamp)
 {
-    
+    harpiLoadType_t type;
+    harpiSMLoadsData load;
+    int16_t i_Load;
+    int16_t i_SM;
+    bool update;
+    harpiLoadStatus_t status;
+    int16_t smID;
+    // Init to default
+    type = HARPI_LOAD_TYPE_OTHER;
+    update = false;
+    //---------------------------------------
+    // Check the frame type
+    //---------------------------------------
+    switch(hapcanData->frametype)
+    {
+        case HAPCAN_RELAY_FRAME_TYPE:
+            type = HARPI_LOAD_TYPE_RELAY;
+            break;
+        default:
+            break;
+    }
+    //---------------------------------------
+    // Check load and frame
+    //---------------------------------------
+    // LOCK
+    pthread_mutex_lock(&g_SMLoads_mutex);
+    for(i_Load = 0; i_Load < loadsStatusArrayLen; i_Load++)
+    {
+        load = loadsStatusArray[i_Load].load;
+        if(type == load.type)
+        {
+            switch(type)
+            {
+                //---------------------------------------
+                // Relay: Check Node, Group, Channel
+                //---------------------------------------
+                case HARPI_LOAD_TYPE_RELAY:
+                    update = (load.channel == hapcanData->data[CHANNEL_BYTE]);
+                    update = update && (load.node == hapcanData->module);
+                    update = update && (load.group == hapcanData->group);
+                    // Check if match was found
+                    if(update)
+                    {
+                        if(hapcanData->data[STATUS_BYTE] == 0x00)
+                        {
+                            // Load is OFF
+                            loadsStatusArray[i_Load].status = 
+                                HARPI_LOAD_STATUS_OFF;
+                        }
+                        else if(hapcanData->data[STATUS_BYTE] == 0xFF)
+                        {
+                            // Load is ON
+                            loadsStatusArray[i_Load].status = 
+                                HARPI_LOAD_STATUS_ON;
+                        }
+                    }
+                    break;
+                //---------------------------------------
+                // Default: not updated
+                //---------------------------------------
+                default:
+                    update = false;
+                    break;
+            }
+        }        
+    }
+    //---------------------------------------
+    // Check the loads to update the state machine status
+    //---------------------------------------
+    if(update)
+    {
+        // At least one load changed - check all
+        for(i_SM = 0; i_SM < smStatusArrayLen; i_SM++)
+        {
+            smID = smStatusArray[i_SM].stateMachineID;
+            //------------------------------------------
+            // - If any is uninitialized, it is undefined
+            // - If all are initialized, and any is ON, it is ON
+            // - If all are initialized, and all are OFF, it is OFF
+            //------------------------------------------
+            status = HARPI_LOAD_STATUS_OFF;
+            for(i_Load = 0; i_Load < loadsStatusArrayLen; i_Load++)
+            {
+                // Check if state machine ID is the same
+                if(loadsStatusArray[i_Load].load.stateMachineID == smID)
+                {
+                    if(loadsStatusArray[i_Load].status == 
+                        HARPI_LOAD_STATUS_UNDEFINED)
+                    {
+                        // Undefined - set as undefined and leave
+                        status = HARPI_LOAD_STATUS_UNDEFINED;
+                        break;
+                    }
+                    if(loadsStatusArray[i_Load].status == HARPI_LOAD_STATUS_ON)
+                    {
+                        // Set as ON, and check remaining for undefined
+                        status = HARPI_LOAD_STATUS_ON;
+                    }
+                }
+            }
+            smStatusArray[i_SM].status = status;
+        }
+    }
+    // UNLOCK
+    pthread_mutex_unlock(&g_SMLoads_mutex);
 }
 
 harpiLoadStatus_t harpiloads_anyLoadON(int16_t stateMachineID)
 {
-    bool isON;
-    isON = false;
-    return isON;
+    int16_t i_SM;
+    harpiLoadStatus_t status;
+    int16_t smID;
+    // Init
+    status = HARPI_LOAD_STATUS_UNDEFINED;
+    // Check the state machines
+    // LOCK
+    pthread_mutex_lock(&g_SMLoads_mutex);
+    for(i_SM = 0; i_SM < smStatusArrayLen; i_SM++)
+    {
+        smID = smStatusArray[i_SM].stateMachineID;
+        if(smID == stateMachineID)
+        {
+            status = smStatusArray[i_SM].status;
+            break;
+        }
+    }
+    // UNLOCK
+    pthread_mutex_unlock(&g_SMLoads_mutex);
+    return status;
 }
