@@ -25,7 +25,7 @@
 #include <hapcan.h>
 #include <manager.h>
 #include <csvconfig.h>
-#include <harpievents.h>
+#include <harpi.h>
 
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
@@ -202,7 +202,7 @@ void* managerHandleCAN0Buffers(void *arg)
                         //-------------------------------------------------
                         // Error in handled within the function
                         hapcan_getHAPCANDataFromCAN(&cf_Frame, &hapcanData);
-                        harpievents_handleCAN(&hapcanData, timestamp);
+                        harpi_handleCAN(&hapcanData, timestamp);
                     }
                 }
                 // 2ms loop after empty buffer
@@ -238,12 +238,7 @@ void* managerHandleHAPCANPeriodic(void *arg)
                 // module status
                 //----------------------------------------------------------
                 // Error is handled within the functions
-                //hsystem_periodic();
-            }
-            else
-            {
-                // Request initial status update
-                //hsystem_statusUpdate();
+                harpi_periodic();
             }
         }
         // 50ms Loop - Give time for the modules to respond and to not increase

@@ -45,6 +45,28 @@ void harpiloads_init(void);
  **/
 void harpiloads_load(harpiLinkedList* element);
 
+/**
+ * Periodic check for unitialized loads
+ * 
+ **/
+void harpiloads_periodic(void);
+
+/**
+ * Check the CAN message received for updating loads status
+ * \param   hapcanData      (INPUT) received HAPCAN Frame
+ *          timestamp       (INPUT) Received message timestamp
+ * 
+ */
+void harpiloads_handleCAN(hapcanCANData* hapcanData, 
+        unsigned long long timestamp);
+
+/**
+ * Load list and memory with linked list data
+ * \param   stateMachineID (INPUT) The state machine ID
+ * 
+ **/
+harpiLoadStatus_t harpiloads_anyLoadON(int16_t stateMachineID);
+
 
 
 #ifdef __cplusplus

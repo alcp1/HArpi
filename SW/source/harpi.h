@@ -35,6 +35,14 @@ typedef enum
   HARPI_LOAD_TYPE_OTHER
 }harpiLoadType_t;
 
+// Load Status
+typedef enum
+{
+  HARPI_LOAD_STATUS_ON = 0,
+  HARPI_LOAD_STATUS_OFF,
+  HARPI_LOAD_STATUS_UNDEFINED
+}harpiLoadStatus_t;
+
 // Event Type
 typedef enum
 {
@@ -155,6 +163,21 @@ int16_t harpi_getLinkedListNElements(csvconfig_file_section_t section);
  * 
  **/
 void harpi_load(void);
+
+/**
+ * Periodic checks
+ * 
+ **/
+void harpi_periodic(void);
+
+/**
+ * Check the CAN message received
+ * \param   hapcanData      (INPUT) received HAPCAN Frame
+ *          timestamp       (INPUT) Received message timestamp
+ * 
+ */
+void harpi_handleCAN(hapcanCANData* hapcanData, 
+        unsigned long long timestamp);
 
 
 #ifdef __cplusplus

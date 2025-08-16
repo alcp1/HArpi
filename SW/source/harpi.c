@@ -261,3 +261,18 @@ void harpi_load(void)
     //---------------------------------------------
     harpi_initList(false);
 }
+
+void harpi_periodic(void)
+{
+    // Periodic check of uninitialized loads
+    harpiloads_periodic();
+}
+
+void harpi_handleCAN(hapcanCANData* hapcanData, 
+        unsigned long long timestamp)
+{
+    // Check for CAN Events
+    harpievents_handleCAN(hapcanData, timestamp);
+    // Update Loads and State Machine statuses
+    harpiloads_handleCAN(hapcanData, timestamp);
+}

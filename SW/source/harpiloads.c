@@ -28,6 +28,19 @@
 //----------------------------------------------------------------------------//
 // INTERNAL TYPES
 //----------------------------------------------------------------------------//
+// State of each load
+typedef struct  
+{
+    harpiSMLoadsData load;
+    harpiLoadStatus_t status;
+} hlLoads_t;
+
+// State of each state machine
+typedef struct  
+{
+    int16_t stateMachineID;
+    harpiLoadStatus_t status;
+} hlSM_t;
 
 //----------------------------------------------------------------------------//
 // INTERNAL GLOBAL VARIABLES
@@ -35,11 +48,17 @@
 static pthread_mutex_t g_SMLoads_mutex = PTHREAD_MUTEX_INITIALIZER;
 static harpiSMLoadsData* harpiSMLoadsArray = NULL;
 static int16_t harpiSMLoadsArrayLen = 0;
+static hlLoads_t* loadsStatusArray = NULL;
+static int16_t loadsStatusArrayLen = 0;
+static hlSM_t* smStatusArray = NULL;
+static int16_t smStatusArrayLen = 0;
 
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
 static bool copyListToArray(harpiLinkedList* element);
+static void initLoadsArray(void);
+static void initStateMachinesArray(void);
 
 // Copy from the Linked List to the Array
 static bool copyListToArray(harpiLinkedList* element)
@@ -71,6 +90,102 @@ static bool copyListToArray(harpiLinkedList* element)
         }
     }
     return isOK;
+}
+
+// From the State Machine loads array, create the load status and initialize it
+static void initLoadsArray(void)
+{
+    int16_t i;    
+    // Init array
+    if(loadsStatusArray != NULL)
+    {
+        free(loadsStatusArray);
+        loadsStatusArray = NULL;
+    }
+    loadsStatusArrayLen = 0;
+    // Update if "State Machines and Loads" exists and is OK
+    if(harpiSMLoadsArrayLen > 0)
+    {
+        // Update Len
+        loadsStatusArrayLen = harpiSMLoadsArrayLen;
+        // Allocate memory for array
+        loadsStatusArray = (hlLoads_t*)malloc(loadsStatusArrayLen * 
+        sizeof(hlLoads_t));
+        // Init status
+        for(i = 0; i < loadsStatusArrayLen; i++)
+        {
+            // Copy data from the state machine loads array
+            memcpy(&(loadsStatusArray[i].load), &(harpiSMLoadsArray[i]),
+                sizeof(harpiSMLoadsData));
+            // Init each load as undefined state
+            loadsStatusArray[i].status = HARPI_LOAD_STATUS_UNDEFINED;
+        }
+    }
+}
+
+// From the State Machine loads array, create the state machine status and 
+// initialize it
+static void initStateMachinesArray(void)
+{
+    int16_t i_Load;
+    int16_t i_SM;
+    int16_t* tempArray = NULL;
+    int16_t tempArrayLen = 0;
+    int16_t smcount;
+    bool ignoreState;
+    // Init array
+    if(smStatusArray != NULL)
+    {
+        free(smStatusArray);
+        smStatusArray = NULL;
+    }
+    smStatusArrayLen = 0;
+    // Init counter
+    smcount = 0;
+    // Update if "State Machines and Loads" exists and is OK
+    if(harpiSMLoadsArrayLen > 0)
+    {
+        // Init Temp Array
+        tempArray = (int16_t*)malloc(harpiSMLoadsArrayLen * sizeof(int16_t));
+        tempArrayLen = harpiSMLoadsArrayLen;
+        // Init entire array
+        for(i_SM = 0; i_SM < tempArrayLen; i_SM++)
+        {
+            tempArray[i_SM] = -1;
+        }
+        // Init first position
+        tempArray[0] = harpiSMLoadsArray[0].stateMachineID;
+        smcount++;
+        // Check the State Machine loads array
+        for(i_Load = 0; i_Load < harpiSMLoadsArrayLen; i_Load++)
+        {
+            ignoreState = false;
+            for(i_SM = 0; i_SM < smcount; i_SM++)
+            {
+                if(harpiSMLoadsArray[i_Load].stateMachineID == tempArray[i_SM])
+                {
+                    ignoreState = true;
+                }
+            }
+            if(!ignoreState)
+            {
+                // Add to the list of states
+                tempArray[smcount] = harpiSMLoadsArray[i_Load].stateMachineID;
+                smcount++;
+            }
+        }
+        // Copy from temporary array to final array
+        smStatusArrayLen = smcount;
+        smStatusArray = (hlSM_t*)malloc(smStatusArrayLen * sizeof(hlSM_t));
+        for(i_SM = 0; i_SM < smStatusArrayLen; i_SM++)
+        {
+            smStatusArray[i_SM].stateMachineID = tempArray[i_SM];
+            smStatusArray[i_SM].status = HARPI_LOAD_STATUS_UNDEFINED;
+        }
+        // Free temporary array
+        free(tempArray);
+        tempArray = NULL;
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -122,4 +237,29 @@ void harpiloads_load(harpiLinkedList* element)
     {
         harpiloads_init();
     }
+    // LOCK
+    pthread_mutex_lock(&g_SMLoads_mutex);
+    // Init Loads and State machines status
+    initLoadsArray();
+    initStateMachinesArray();
+    // UNLOCK
+    pthread_mutex_unlock(&g_SMLoads_mutex);
+}
+
+void harpiloads_periodic(void)
+{
+
+}
+
+void harpiloads_handleCAN(hapcanCANData* hapcanData, 
+        unsigned long long timestamp)
+{
+    
+}
+
+harpiLoadStatus_t harpiloads_anyLoadON(int16_t stateMachineID)
+{
+    bool isON;
+    isON = false;
+    return isON;
 }
