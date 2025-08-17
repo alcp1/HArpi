@@ -154,11 +154,15 @@ static bool isMatch(harpiEventSetsData* set, hapcanCANData* hapcanData)
 int harpievents_createBuffer(void)
 {
     int check;
+    // LOCK 
+    pthread_mutex_lock(&g_EventSets_mutex);
     // Init Buffer
     if(harpiEventsBufferID < 0)
     {
         harpiEventsBufferID = buffer_init(HARPI_EVENTS_BUFFER_SIZE);
     }
+    // UNLOCK
+    pthread_mutex_unlock(&g_EventSets_mutex);
     // Check buffer - should have ID
     check = 0;
     if(harpiEventsBufferID < 0)
@@ -267,4 +271,67 @@ void harpievents_handleCAN(hapcanCANData* hapcanData,
             }
         }
     }
+}
+
+int harpievents_getEvent(harpiEvent_t* event)
+{
+    int ret;
+    int count;
+    int check;
+    unsigned int data_size;
+    // Init
+    ret = HARPIEVENTS_ERROR;
+    // LOCK 
+    pthread_mutex_lock(&g_EventSets_mutex);
+    //-------------------------------------------
+    // Get the number of elements in the buffer
+    //-------------------------------------------
+    count = buffer_dataCount(harpiEventsBufferID);
+    if(count <= 0)
+    {
+        // No event in buffer - Unlock buffers and return now
+        ret = HARPIEVENTS_NO_EVENT;
+        // UNLOCK 
+        pthread_mutex_unlock(&g_EventSets_mutex);
+        return ret;
+    }
+    //-------------------------------------------
+    // Get the data size
+    //-------------------------------------------
+    data_size = buffer_popSize(harpiEventsBufferID);
+    if(data_size == sizeof(harpiEvent_t))
+    {
+        //-------------------------------------------
+        // Read from buffer - Fill event
+        //-------------------------------------------
+        check = buffer_pop(harpiEventsBufferID, event, sizeof(harpiEvent_t));
+        if(check != BUFFER_OK)
+        {
+            //---------------
+            // FATAL ERROR
+            //---------------
+            #ifdef DEBUG_HARPIEVENTS_ERRORS
+            debug_print("harpievents_getEvent: Buffer ERROR - data pop!\n");
+            #endif
+            ret = HARPIEVENTS_ERROR;
+        }
+        else
+        {
+            ret = HARPIEVENTS_NEW_EVENT;
+        }
+    }
+    else
+    {
+        //---------------
+        // FATAL ERROR
+        //---------------
+        #ifdef DEBUG_HARPIEVENTS_ERRORS
+        debug_print("harpievents_getEvent: Buffer ERROR - Data Size is 0!\n");
+        #endif
+        ret = HARPIEVENTS_ERROR;
+    }
+    // UNLOCK 
+    pthread_mutex_unlock(&g_EventSets_mutex);
+    // return
+    return ret;
 }

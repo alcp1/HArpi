@@ -21,7 +21,9 @@ extern "C" {
 //----------------------------------------------------------------------------//
 // EXTERNAL DEFINITIONS
 //----------------------------------------------------------------------------//    
-
+#define HARPIEVENTS_NEW_EVENT   1
+#define HARPIEVENTS_NO_EVENT    0
+#define HARPIEVENTS_ERROR       -1
     
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES
@@ -62,6 +64,16 @@ void harpievents_load(harpiLinkedList* element);
 void harpievents_handleCAN(hapcanCANData* hapcanData, 
         unsigned long long timestamp);
 
+/**
+ * Get event from the buffer.
+ * 
+ * \param   event (OUTPUT) Event to be filled
+ * 
+ * \return  HARPIEVENTS_NEW_EVENT       "event" filled from buffer
+ *          HARPIEVENTS_NO_EVENT        no new event
+ *          HARPIEVENTS_ERROR           error
+ */
+int harpievents_getEvent(harpiEvent_t* event);
 
 #ifdef __cplusplus
 }
