@@ -30,6 +30,12 @@
 //----------------------------------------------------------------------------//
 // INTERNAL TYPES
 //----------------------------------------------------------------------------//
+typedef struct  
+{
+    bool send;
+    hapcanCANData frame;
+} hlFrameInfo_t;
+
 // State of each load
 typedef struct  
 {
@@ -61,6 +67,7 @@ static int16_t smStatusArrayLen = 0;
 static bool copyListToArray(harpiLinkedList* element);
 static void initLoadsArray(void);
 static void initStateMachinesArray(void);
+static void getLoadOFFInfo(harpiSMLoadsData* load, hlFrameInfo_t* frame_info);
 
 // Copy from the Linked List to the Array
 static bool copyListToArray(harpiLinkedList* element)
@@ -112,7 +119,7 @@ static void initLoadsArray(void)
         loadsStatusArrayLen = harpiSMLoadsArrayLen;
         // Allocate memory for array
         loadsStatusArray = (hlLoads_t*)malloc(loadsStatusArrayLen * 
-        sizeof(hlLoads_t));
+            sizeof(hlLoads_t));
         // Init status
         for(i = 0; i < loadsStatusArrayLen; i++)
         {
@@ -187,6 +194,46 @@ static void initStateMachinesArray(void)
         // Free temporary array
         free(tempArray);
         tempArray = NULL;
+    }
+}
+
+// Generate a HAPCAN frame based on the load's info
+// INPUT: load
+// OUTPUT: frame (to be filled)
+static void getLoadOFFInfo(harpiSMLoadsData* load, hlFrameInfo_t* frame_info)
+{
+    uint8_t channel_bit;
+    aux_clearHAPCANFrame(&(frame_info->frame));
+    frame_info->send = false;
+    switch(load->type)
+    {
+        case HAPCAN_RELAY_FRAME_TYPE:
+            //----------------------------------------
+            // Get shift. Examples:
+            // 0x01 - <00000001> - only relay K1
+            // 0x02 - <00000010> - only relay K2
+            // 0x03 - <00000011> - relay K1 & K2
+            // 0x04 - <00000100> - only relay K3
+            //----------------------------------------
+            if( (load->channel > 0) && (load->channel <= 6) )
+            {
+                channel_bit =  1 << (load->channel - 1);
+                // Send this frame
+                frame_info->send = true;
+            }
+            // Get initial frame for DIRECT CONTROL
+            hapcan_getSystemFrame(&(frame_info->frame),
+                HAPCAN_DIRECT_CONTROL_FRAME_TYPE, load->node, load->group);
+            // Fill INSTR1 - Turn OFF
+            frame_info->frame.data[0] = 0x00;
+            // Fill INSTR2 - Channel
+            frame_info->frame.data[1] = channel_bit
+            // Fill INSTR3 - Timer (immediate)
+            frame_info->frame.data[4] = 0x00;
+            break;
+        default:
+            frame_info->send = false;
+            break;   
     }
 }
 
@@ -406,7 +453,7 @@ void harpiloads_handleCAN(hapcanCANData* hapcanData,
     pthread_mutex_unlock(&g_SMLoads_mutex);
 }
 
-harpiLoadStatus_t harpiloads_anyLoadON(int16_t stateMachineID)
+harpiLoadStatus_t harpiloads_isAnyLoadON(int16_t stateMachineID)
 {
     int16_t i_SM;
     harpiLoadStatus_t status;
@@ -416,6 +463,7 @@ harpiLoadStatus_t harpiloads_anyLoadON(int16_t stateMachineID)
     // Check the state machines
     // LOCK
     pthread_mutex_lock(&g_SMLoads_mutex);
+    // Check all state machine IDs
     for(i_SM = 0; i_SM < smStatusArrayLen; i_SM++)
     {
         smID = smStatusArray[i_SM].stateMachineID;
@@ -428,4 +476,79 @@ harpiLoadStatus_t harpiloads_anyLoadON(int16_t stateMachineID)
     // UNLOCK
     pthread_mutex_unlock(&g_SMLoads_mutex);
     return status;
+}
+
+void harpiloads_setLoadsOFF(int16_t stateMachineID)
+{
+    int16_t i;
+    int16_t smID;
+    hlFrameInfo_t* hframeInfoArray = NULL;
+    int16_t hframeInfoArrayLen = 0;
+    int16_t check;
+    unsigned long long millisecondsSinceEpoch;
+    // LOCK
+    pthread_mutex_lock(&g_SMLoads_mutex);
+    //-----------------------------------------
+    // Get the number of loads to be turned OFF
+    //-----------------------------------------
+    hframeInfoArrayLen = 0;
+    for(i = 0; i < harpiSMLoadsArrayLen; i++)
+    {
+        smID = harpiSMLoadsArray[i].stateMachineID;
+        if(smID == stateMachineID)
+        {
+            hframeInfoArrayLen++;
+        }
+    }
+    //-----------------------------------------
+    // Allocate memory
+    //-----------------------------------------
+    if(hframeInfoArrayLen > 0)
+    {
+        hframeInfoArray = (hlFrameInfo_t*)malloc(hframeInfoArrayLen * 
+            sizeof(hlFrameInfo_t));
+        //-----------------------------------------
+        // Get frame info - Fill hframeInfoArray
+        //-----------------------------------------
+        hframeInfoArrayLen = 0;
+        for(i = 0; i < harpiSMLoadsArrayLen; i++)
+        {
+            smID = harpiSMLoadsArray[i].stateMachineID;
+            if(smID == stateMachineID)
+            {
+                // Get frame info
+                getLoadOFFInfo(&(harpiSMLoadsArray[i]), 
+                    &(hframeInfoArray[hframeInfoArrayLen]));
+                hframeInfoArrayLen++;
+            }
+        }
+    }
+    // UNLOCK
+    pthread_mutex_unlock(&g_SMLoads_mutex);
+    //-----------------------------------------
+    // Send frames
+    //-----------------------------------------
+    // Get Timestamp
+    millisecondsSinceEpoch = aux_getmsSinceEpoch();
+    // Send each frame
+    for(i = 0; i < hframeInfoArrayLen; i++)
+    {
+        if(hframeInfoArray[i].send)
+        {
+            // Send CAN Frame
+            check = hapcan_addToCANWriteBuffer(&(hframeInfoArray[i].frame),
+                millisecondsSinceEpoch);
+            if(check != HAPCAN_CAN_RESPONSE)
+            {
+                #ifdef DEBUG_HAPCAN_ERRORS
+                debug_print("harpiloads_setLoadsOFF - ERROR!\n");
+                #endif
+            }
+        }
+    }
+    //-----------------------------------------
+    // Free memory
+    //-----------------------------------------
+    free(hframeInfoArray);
+    hframeInfoArray = NULL;
 }

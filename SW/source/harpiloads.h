@@ -65,7 +65,14 @@ void harpiloads_handleCAN(hapcanCANData* hapcanData,
  * \param   stateMachineID (INPUT) The state machine ID
  * 
  **/
-harpiLoadStatus_t harpiloads_anyLoadON(int16_t stateMachineID);
+harpiLoadStatus_t harpiloads_isAnyLoadON(int16_t stateMachineID);
+
+/**
+ * Turn OFF the loads of a given state machine
+ * \param   stateMachineID (INPUT) The state machine ID
+ * 
+ **/
+void harpiloads_setLoadsOFF(int16_t stateMachineID);
 
 
 

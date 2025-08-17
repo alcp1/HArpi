@@ -130,7 +130,7 @@ void harpiactions_SendActionsFromID(int16_t actionsSetID)
     int16_t i;
     unsigned long long millisecondsSinceEpoch;
     int16_t frameCount;
-    hapcanCANData* frames;
+    hapcanCANData* frames = NULL;
     // Get Timestamp
     millisecondsSinceEpoch = aux_getmsSinceEpoch();
     //------------------------------------------------
@@ -144,8 +144,11 @@ void harpiactions_SendActionsFromID(int16_t actionsSetID)
     frameCount = 0;
     // Init frames to be sent - reserve for the same size as 
     // harpiActionSetArrayLen (worst case - all actions have the same ID)
-    frames = (hapcanCANData*)malloc(harpiActionSetArrayLen * 
-        sizeof(hapcanCANData));
+    if(harpiActionSetArrayLen > 0)
+    {
+        frames = (hapcanCANData*)malloc(harpiActionSetArrayLen * 
+            sizeof(hapcanCANData));
+    }
     // LOCK
     pthread_mutex_lock(&g_ActionSets_mutex);
     // Check all elements of the array
