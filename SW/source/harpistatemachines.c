@@ -30,6 +30,12 @@
 //----------------------------------------------------------------------------//
 // INTERNAL TYPES
 //----------------------------------------------------------------------------//
+// State machine data
+typedef struct  
+{
+    int16_t stateMachineID;
+    int16_t currentStateID;
+} hsmData_t;
 
 //----------------------------------------------------------------------------//
 // INTERNAL GLOBAL VARIABLES
@@ -43,12 +49,14 @@ static harpiStateTransitionsData* harpiSTransitionArray = NULL;
 static int16_t harpiSTransitionArrayLen = 0;
 static int16_t* smIDArray;
 static int16_t smIDArrayLen;
+static hsmData_t* smDataArray;
+static int16_t smDataArrayLen;
 
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
 static bool copyListToArray(harpiLinkedList* element);
-static void initStateMachinesArray(void);
+static void initStateMachinesArrays(void);
 static void checkSMs(harpiEvent_t* event);
 
 // Copy from the Linked List to the Array - return true if OK
@@ -249,10 +257,15 @@ static void initStateMachinesArray(void)
         }
         // Copy from temporary array to final array
         smIDArrayLen = smcount;
+        smDataArrayLen = smcount;
         smIDArray = (int16_t*)malloc(smIDArrayLen * sizeof(int16_t));
-        for(i_SM = 0; i_SM < smIDArrayLen; i_SM++)
+        smDataArray = (hsmData_t*)malloc(smDataArrayLen * sizeof(hsmData_t));
+        for(i_SM = 0; i_SM < smcount; i_SM++)
         {
             smIDArray[i_SM] = tempArray[i_SM];
+            smDataArray[i_SM].stateMachineID = tempArray[i_SM];
+            // Init with state 0
+            smDataArray[i_SM].currentStateID = 0;
         }
         // Free temporary array
         free(tempArray);
@@ -263,7 +276,24 @@ static void initStateMachinesArray(void)
 // Check a new event for the state machines
 static void checkSMs(harpiEvent_t* event)
 {
+    int16_t i_SM;
+    int16_t stateMachineID;
+    // Check all state machines
+    for(i_SM = 0; i_SM < smDataArrayLen; i_SM++)
+    {
+        stateMachineID = smDataArray[i_SM].stateMachineID;
+        //---------------------------------------------
+        // State Machines and Events
+        //---------------------------------------------
 
+        //---------------------------------------------
+        // States and Actions
+        //---------------------------------------------
+
+        //---------------------------------------------
+        // State Transitions
+        //---------------------------------------------
+    }
 }
 
 //----------------------------------------------------------------------------//
@@ -372,7 +402,7 @@ void harpism_load(harpiLinkedList* element)
     // LOCK
     pthread_mutex_lock(&g_SM_mutex);
     // Init state machine array
-    initStateMachinesArray();
+    initStateMachinesArrays();
     // Create and init timers
     timer_createTimers(smIDArrayLen, smIDArray);
     // UNLOCK

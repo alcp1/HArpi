@@ -267,14 +267,14 @@ void harpi_load(void)
 
 void harpi_periodic(void)
 {
-    // Periodic check of uninitialized loads - every LOADS_PERIOD
+    // Periodic check of uninitialized loads - every HARPILOADS_PERIOD
     g_hloads_counter++;
     if(g_hloads_counter > (int16_t)(HARPILOADS_PERIOD / HARPI_PERIOD))
     {
         harpiloads_periodic();
         g_hloads_counter = 0;
     }
-    // Periodic timer update
+    // Periodic timer update - every HARPITIMER_PERIOD
     g_timer_counter++;
     if(g_timer_counter > (int16_t)(HARPITIMER_PERIOD / HARPI_PERIOD))
     {
