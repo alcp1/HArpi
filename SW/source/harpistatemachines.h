@@ -45,6 +45,12 @@ void harpism_init(void);
  **/
 void harpism_load(harpiLinkedList* element);
 
+/**
+ * Periodic check of state machine
+ * 
+ **/
+void harpism_periodic(void);
+
 
 
 #ifdef __cplusplus

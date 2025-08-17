@@ -19,6 +19,7 @@
 #include <pthread.h>
 #include <auxiliary.h>
 #include <debug.h>
+#include <harpievents.h>
 #include <harpistatemachines.h>
 
 //----------------------------------------------------------------------------//
@@ -47,6 +48,7 @@ static int16_t smIDArrayLen;
 //----------------------------------------------------------------------------//
 static bool copyListToArray(harpiLinkedList* element);
 static void initStateMachinesArray(void);
+static void checkSMs(harpiEvent_t* event);
 
 // Copy from the Linked List to the Array - return true if OK
 static bool copyListToArray(harpiLinkedList* element)
@@ -257,6 +259,12 @@ static void initStateMachinesArray(void)
     }
 }
 
+// Check a new event for the state machines
+static void checkSMs(harpiEvent_t* event)
+{
+
+}
+
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
@@ -366,4 +374,27 @@ void harpism_load(harpiLinkedList* element)
     initStateMachinesArray();
     // UNLOCK
     pthread_mutex_unlock(&g_SM_mutex);
+}
+
+void harpism_periodic(void)
+{
+    int check;
+    bool retry;
+    harpiEvent_t event;    
+    retry = true;
+    while(retry)
+    {
+        // Check if there is a new event
+        check = harpievents_getEvent(&event);
+        if(check == HARPIEVENTS_NEW_EVENT)
+        {
+            // check state machines
+            checkSMs(&event);
+        }
+        else
+        {
+            // leave loop
+            retry = false;
+        }
+    }
 }

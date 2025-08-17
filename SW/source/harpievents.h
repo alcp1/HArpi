@@ -69,9 +69,9 @@ void harpievents_handleCAN(hapcanCANData* hapcanData,
  * 
  * \param   event (OUTPUT) Event to be filled
  * 
- * \return  HARPIEVENTS_NEW_EVENT       "event" filled from buffer
- *          HARPIEVENTS_NO_EVENT        no new event
- *          HARPIEVENTS_ERROR           error
+ * \return      HARPIEVENTS_NEW_EVENT       "event" filled from buffer |
+ *              HARPIEVENTS_NO_EVENT        no new event |
+ *              HARPIEVENTS_ERROR           error
  */
 int harpievents_getEvent(harpiEvent_t* event);
 

@@ -38,6 +38,7 @@
 //----------------------------------------------------------------------------//
 static pthread_mutex_t g_HarpiList_mutex = PTHREAD_MUTEX_INITIALIZER;
 static harpiLinkedList *head = NULL;
+static int16_t g_period_counter = 0;
 
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
@@ -264,8 +265,15 @@ void harpi_load(void)
 
 void harpi_periodic(void)
 {
-    // Periodic check of uninitialized loads
-    harpiloads_periodic();
+    // Periodic check of uninitialized loads - every LOADS_PERIOD
+    g_period_counter++;
+    if(g_period_counter > (int16_t)(HARPILOADS_PERIOD / HARPI_PERIOD))
+    {
+        harpiloads_periodic();
+        g_period_counter = 0;
+    }
+    // Periodic check of state machines
+    harpism_periodic();
 }
 
 void harpi_handleCAN(hapcanCANData* hapcanData, 

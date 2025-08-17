@@ -235,9 +235,8 @@ void* managerHandleHAPCANPeriodic(void *arg)
             // Error is handled within the functions
             harpi_periodic();
         }
-        // 300ms Loop - Give time for the modules to respond and to not increase
-        // Bus load too much (some modules send 17 CAN messages for its status)
-        usleep(300000);
+        // 5ms Loop
+        usleep(5000);
     }
 }
 
