@@ -388,8 +388,12 @@ void harpism_periodic(void)
         check = harpievents_getEvent(&event);
         if(check == HARPIEVENTS_NEW_EVENT)
         {
-            // check state machines
+            // LOCK
+            pthread_mutex_lock(&g_SM_mutex);
+            // Check state machines
             checkSMs(&event);
+            // UNLOCK
+            pthread_mutex_unlock(&g_SM_mutex);
         }
         else
         {

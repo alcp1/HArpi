@@ -53,6 +53,15 @@ typedef enum
   HARPI_EVENT_OTHER
 }harpiEventType_t;
 
+// Event Type
+typedef enum
+{
+  HARPI_TIMER_EXPIRED = 0,
+  HARPI_TIMER_RUNNING,
+  HARPI_TIMER_INIT,
+  HARPI_TIMER_UNAVAILABLE
+}harpiTimerStatus_t;
+
 // Event (for event processing)
 typedef struct  
 {
