@@ -24,6 +24,7 @@
 #include <harpievents.h>
 #include <harpiloads.h>
 #include <harpistatemachines.h>
+#include <timer.h>
 
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
@@ -38,7 +39,8 @@
 //----------------------------------------------------------------------------//
 static pthread_mutex_t g_HarpiList_mutex = PTHREAD_MUTEX_INITIALIZER;
 static harpiLinkedList *head = NULL;
-static int16_t g_period_counter = 0;
+static int16_t g_hloads_counter = 0;
+static int16_t g_timer_counter = 0;
 
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
@@ -266,11 +268,18 @@ void harpi_load(void)
 void harpi_periodic(void)
 {
     // Periodic check of uninitialized loads - every LOADS_PERIOD
-    g_period_counter++;
-    if(g_period_counter > (int16_t)(HARPILOADS_PERIOD / HARPI_PERIOD))
+    g_hloads_counter++;
+    if(g_hloads_counter > (int16_t)(HARPILOADS_PERIOD / HARPI_PERIOD))
     {
         harpiloads_periodic();
-        g_period_counter = 0;
+        g_hloads_counter = 0;
+    }
+    // Periodic timer update
+    g_timer_counter++;
+    if(g_timer_counter > (int16_t)(HARPITIMER_PERIOD / HARPI_PERIOD))
+    {
+        timer_periodic();
+        g_timer_counter = 0;
     }
     // Periodic check of state machines
     harpism_periodic();

@@ -41,12 +41,13 @@ void timer_createTimers(int16_t ntimers, int16_t* smIDArray);
 /**
  * set timer with specific value
  * \param       stateMachineID: number of timers to be created
+ * \param       value: value in 100ms base (ex: 3 = 300ms)
  * 
  **/
 void timer_setTimer(int16_t stateMachineID, int16_t value);
 
 /**
- * Periodic update of timers 
+ * Periodic update of timers - To be called every 100ms
  **/
 void timer_periodic(void);
 

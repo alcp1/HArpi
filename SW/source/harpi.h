@@ -26,6 +26,7 @@ extern "C" {
 //----------------------------------------------------------------------------//
 #define HARPI_PERIOD 5000UL         // 5ms - See manager.c
 #define HARPILOADS_PERIOD 400000UL  // 400ms
+#define HARPITIMER_PERIOD 100000UL  // 100ms
     
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES

@@ -20,6 +20,7 @@
 #include <auxiliary.h>
 #include <debug.h>
 #include <harpievents.h>
+#include <timer.h>
 #include <harpistatemachines.h>
 
 //----------------------------------------------------------------------------//
@@ -372,6 +373,8 @@ void harpism_load(harpiLinkedList* element)
     pthread_mutex_lock(&g_SM_mutex);
     // Init state machine array
     initStateMachinesArray();
+    // Create and init timers
+    timer_createTimers(smIDArrayLen, smIDArray);
     // UNLOCK
     pthread_mutex_unlock(&g_SM_mutex);
 }
