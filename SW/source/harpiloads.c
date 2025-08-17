@@ -411,8 +411,8 @@ harpiLoadStatus_t harpiloads_anyLoadON(int16_t stateMachineID)
     int16_t i_SM;
     harpiLoadStatus_t status;
     int16_t smID;
-    // Init
-    status = HARPI_LOAD_STATUS_UNDEFINED;
+    // Init - If no state machine is matched, no load is available for the ID
+    status = HARPI_LOAD_STATUS_NO_LOADS;
     // Check the state machines
     // LOCK
     pthread_mutex_lock(&g_SMLoads_mutex);
