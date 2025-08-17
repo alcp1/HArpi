@@ -51,8 +51,6 @@ void harpism_load(harpiLinkedList* element);
  **/
 void harpism_periodic(void);
 
-
-
 #ifdef __cplusplus
 }
 #endif

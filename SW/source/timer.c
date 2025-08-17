@@ -92,6 +92,7 @@ void timer_setTimer(int16_t stateMachineID, int16_t value)
         if(timerDataArray[i].stateMachineID == stateMachineID)
         {
             timerDataArray[i].value = value;
+            timerDataArray[i].status = HARPI_TIMER_RUNNING;
         }
     }
     // UNLOCK

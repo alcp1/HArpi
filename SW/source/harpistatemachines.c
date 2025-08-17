@@ -284,6 +284,7 @@ static void checkSMs(harpiEvent_t* event)
     int16_t currentStateID;
     bool match;
     bool skip;
+    harpiLoadStatus_t load_status;
     harpiTimerStatus_t timer_status;
     // Check all state machines
     for(i_SM = 0; i_SM < smDataArrayLen; i_SM++)
@@ -308,6 +309,9 @@ static void checkSMs(harpiEvent_t* event)
                 timer_status = timer_getTimerStatus(stateMachineID);
                 match = (timer_status == HARPI_TIMER_EXPIRED);
                 match = match || (timer_status == HARPI_TIMER_INIT);
+                // Check loads status
+                load_status = harpiloads_isAnyLoadON(stateMachineID);
+                match = match && (load_status == HARPI_LOAD_STATUS_ON);
                 if(match)
                 {
                     // Turn Off the loads
