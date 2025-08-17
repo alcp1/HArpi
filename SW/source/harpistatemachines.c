@@ -39,11 +39,14 @@ static harpiStateActionsData* harpiSActionsArray = NULL;
 static int16_t harpiSActionsArrayLen = 0;
 static harpiStateTransitionsData* harpiSTransitionArray = NULL;
 static int16_t harpiSTransitionArrayLen = 0;
+static int16_t* smIDArray;
+static int16_t smIDArrayLen;
 
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
 static bool copyListToArray(harpiLinkedList* element);
+static void initStateMachinesArray(void);
 
 // Copy from the Linked List to the Array - return true if OK
 static bool copyListToArray(harpiLinkedList* element)
@@ -136,6 +139,124 @@ static bool copyListToArray(harpiLinkedList* element)
     return isOK;
 }
 
+// From the State Machine arrays, create the state machine status and 
+// initialize it
+static void initStateMachinesArray(void)
+{
+    int16_t i_Array;
+    int16_t i_SM;
+    int16_t* tempArray = NULL;
+    int16_t tempArrayLen = 0;
+    int16_t smcount;
+    int16_t totalLen;
+    bool ignoreID;
+    // Init array
+    if(smIDArray != NULL)
+    {
+        free(smIDArray);
+        smIDArray = NULL;
+    }
+    smIDArrayLen = 0;
+    // Init
+    smcount = 0;
+    totalLen = harpiSMEventsArrayLen + harpiSActionsArrayLen + 
+        harpiSTransitionArrayLen;
+    // Update if arrays exist and are OK
+    if(totalLen > 0)
+    {
+        // Init Temp Array
+        tempArray = (int16_t*)malloc(totalLen * sizeof(int16_t));
+        tempArrayLen = totalLen;
+        // Init entire array
+        for(i_SM = 0; i_SM < tempArrayLen; i_SM++)
+        {
+            tempArray[i_SM] = -1;
+        }
+        // Init first position
+        if(harpiSMEventsArrayLen > 0)
+        {
+            tempArray[0] = harpiSMEventsArray[0].stateMachineID;
+        }
+        else if(harpiSActionsArrayLen > 0)
+        {
+            tempArray[0] = harpiSActionsArray[0].stateMachineID;
+        }
+        else if(harpiSTransitionArrayLen > 0)  
+        {
+            tempArray[0] = harpiSTransitionArray[0].stateMachineID;
+        }
+        smcount++;
+        // Check the harpiSMEventsData array
+        for(i_Array = 0; i_Array < harpiSMEventsArrayLen; i_Array++)
+        {
+            ignoreID = false;
+            for(i_SM = 0; i_SM < smcount; i_SM++)
+            {
+                if(harpiSMEventsArray[i_Array].stateMachineID == 
+                    tempArray[i_SM])
+                {
+                    ignoreID = true;
+                }
+            }
+            if(!ignoreID)
+            {
+                // Add to the list of states
+                tempArray[smcount] = harpiSMEventsArray[i_Array].stateMachineID;
+                smcount++;
+            }
+        }
+        // Check the harpiStateActionsData array
+        for(i_Array = 0; i_Array < harpiSActionsArrayLen; i_Array++)
+        {
+            ignoreID = false;
+            for(i_SM = 0; i_SM < smcount; i_SM++)
+            {
+                if(harpiSActionsArray[i_Array].stateMachineID == 
+                    tempArray[i_SM])
+                {
+                    ignoreID = true;
+                }
+            }
+            if(!ignoreID)
+            {
+                // Add to the list of states
+                tempArray[smcount] = harpiSActionsArray[i_Array].stateMachineID;
+                smcount++;
+            }
+        }
+        // Check the harpiStateTransitionsData array
+        for(i_Array = 0; i_Array < harpiSTransitionArrayLen; i_Array++)
+        {
+            ignoreID = false;
+            for(i_SM = 0; i_SM < smcount; i_SM++)
+            {
+                if(harpiSTransitionArray[i_Array].stateMachineID == 
+                    tempArray[i_SM])
+                {
+                    ignoreID = true;
+                }
+            }
+            if(!ignoreID)
+            {
+                // Add to the list of states
+                tempArray[smcount] = 
+                    harpiSTransitionArray[i_Array].stateMachineID;
+                smcount++;
+            }
+        }
+        // Copy from temporary array to final array
+        smIDArrayLen = smcount;
+        smIDArray = (int16_t*)malloc(smIDArrayLen * sizeof(int16_t));
+        for(i_SM = 0; i_SM < smIDArrayLen; i_SM++)
+        {
+            smIDArray[i_SM] = tempArray[i_SM];
+        }
+        // Free temporary array
+        free(tempArray);
+        tempArray = NULL;
+    }
+}
+
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
@@ -197,7 +318,7 @@ void harpism_load(harpiLinkedList* element)
     }
     // Get array size and allocate memory
     harpiSMEventsArrayLen = harpi_getLinkedListNElements(
-        CSV_SECTION_STATE_MACHINES_AND_LOADS);
+        CSV_SECTION_STATE_MACHINES_AND_EVENTS);
     harpiSMEventsArray = (harpiSMEventsData*)malloc(harpiSMEventsArrayLen * 
         sizeof(harpiSMEventsData));
     //----------------------------------------
@@ -239,4 +360,10 @@ void harpism_load(harpiLinkedList* element)
     {
         harpism_init();
     }
+    // LOCK
+    pthread_mutex_lock(&g_SM_mutex);
+    // Init state machine array
+    initStateMachinesArray();
+    // UNLOCK
+    pthread_mutex_unlock(&g_SM_mutex);
 }
