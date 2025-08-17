@@ -19,9 +19,11 @@
 #include <pthread.h>
 #include <auxiliary.h>
 #include <debug.h>
+#include <harpiactions.h>
 #include <harpievents.h>
-#include <timer.h>
+#include <harpiloads.h>
 #include <harpistatemachines.h>
+#include <timer.h>
 
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
@@ -277,22 +279,90 @@ static void initStateMachinesArray(void)
 static void checkSMs(harpiEvent_t* event)
 {
     int16_t i_SM;
+    int16_t i;
     int16_t stateMachineID;
+    int16_t currentStateID;
+    bool match;
+    bool skip;
+    harpiTimerStatus_t timer_status;
     // Check all state machines
     for(i_SM = 0; i_SM < smDataArrayLen; i_SM++)
     {
+        // Update information for the current state machine
         stateMachineID = smDataArray[i_SM].stateMachineID;
+        currentStateID = smDataArray[i_SM].currentStateID;
         //---------------------------------------------
         // State Machines and Events
         //---------------------------------------------
-
+        skip = false;
+        for(i = 0; i < harpiSMEventsArrayLen; i++)
+        {
+            match = (!skip);
+            match = match && (harpiSMEventsArray[i].stateMachineID == 
+                stateMachineID);
+            match = match && (harpiSMEventsArray[i].eventSetID == 
+                event->eventSetID);
+            if(match)
+            {
+                // Check timer - if it is expired or exists
+                timer_status = timer_getTimerStatus(stateMachineID);
+                match = (timer_status == HARPI_TIMER_EXPIRED);
+                match = match || (timer_status == HARPI_TIMER_INIT);
+                if(match)
+                {
+                    // Turn Off the loads
+                    harpiloads_setLoadsOFF(stateMachineID);
+                    // Set to initial state
+                    smDataArray[i_SM].currentStateID = 0;
+                    // Skip "States and Actions" and "State Transitions"
+                    skip = true;
+                }
+            }
+        }
         //---------------------------------------------
         // States and Actions
         //---------------------------------------------
-
+        if(!skip)
+        {
+            for(i = 0; i < harpiSActionsArrayLen; i++)
+            {
+                match = (harpiSActionsArray[i].stateMachineID == 
+                    stateMachineID);
+                match = match && (harpiSActionsArray[i].eventSetID == 
+                    event->eventSetID);
+                match = match && (harpiSActionsArray[i].currentStateID == 
+                    currentStateID);
+                if(match)
+                {
+                    // New event: Start timer
+                    timer_setTimer(stateMachineID, HARPI_STATE_WAIT_PERIOD);
+                    // Perform the Action
+                    harpiactions_SendActionsFromID(
+                        harpiSActionsArray[i].actionsSetID);
+                }
+            }
+        }
         //---------------------------------------------
         // State Transitions
         //---------------------------------------------
+        if(!skip)
+        {
+            for(i = 0; i < harpiSTransitionArrayLen; i++)
+            {
+                match = (harpiSTransitionArray[i].stateMachineID == 
+                    stateMachineID);
+                match = match && (harpiSTransitionArray[i].eventSetID == 
+                    event->eventSetID);
+                match = match && (harpiSTransitionArray[i].currentStateID == 
+                    currentStateID);
+                if(match)
+                {
+                    // State transition
+                    smDataArray[i_SM].currentStateID = 
+                        harpiSTransitionArray[i].newStateID;
+                }
+            }
+        }
     }
 }
 
