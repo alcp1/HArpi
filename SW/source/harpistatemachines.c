@@ -154,7 +154,7 @@ static bool copyListToArray(harpiLinkedList* element)
 
 // From the State Machine arrays, create the state machine status and 
 // initialize it
-static void initStateMachinesArray(void)
+static void initStateMachinesArrays(void)
 {
     int16_t i_Array;
     int16_t i_SM;
