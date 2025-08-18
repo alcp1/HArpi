@@ -139,4 +139,6 @@ harpiTimerStatus_t timer_getTimerStatus(int16_t stateMachineID)
     }
     // UNLOCK
     pthread_mutex_unlock(&g_Timers_mutex);
+    // Return
+    return ret;
 }

@@ -207,7 +207,7 @@ static void getLoadOFFInfo(harpiSMLoadsData* load, hlFrameInfo_t* frame_info)
     frame_info->send = false;
     switch(load->type)
     {
-        case HAPCAN_RELAY_FRAME_TYPE:
+        case HARPI_LOAD_TYPE_RELAY:
             //----------------------------------------
             // Get shift. Examples:
             // 0x01 - <00000001> - only relay K1
@@ -227,7 +227,7 @@ static void getLoadOFFInfo(harpiSMLoadsData* load, hlFrameInfo_t* frame_info)
             // Fill INSTR1 - Turn OFF
             frame_info->frame.data[0] = 0x00;
             // Fill INSTR2 - Channel
-            frame_info->frame.data[1] = channel_bit
+            frame_info->frame.data[1] = channel_bit;
             // Fill INSTR3 - Timer (immediate)
             frame_info->frame.data[4] = 0x00;
             break;
