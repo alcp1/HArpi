@@ -136,10 +136,12 @@ static bool areConfigFilesChanged(void)
         #endif
         // Files are changed
         ret = true;
+        //----------------------------
+        // Clear arrays
+        //----------------------------
         // Update g_last_date_array
         free(g_last_date_array);
         g_last_date_array = NULL;
-        g_last_date_array = (time_t*)malloc(g_n_csv_files * sizeof(time_t));
         // Reset g_csv_filepath_array
         for (i = 0; i < g_n_csv_files; i++)
         {
@@ -149,24 +151,35 @@ static bool areConfigFilesChanged(void)
             // Update file(s) date(s)
             g_last_date_array[i] = 0;
         }
-        // Update g_n_csv_files after cleaning
-        g_n_csv_files = n_csv_files;
         // Then, free the array of pointers itself and set it to NULL
         free(g_csv_filepath_array);
-        g_csv_filepath_array = NULL;        
-        // Allocate memory for the array of pointers
-        g_csv_filepath_array = (char**)malloc(g_n_csv_files * sizeof(char*));
-        for (i = 0; i < g_n_csv_files; i++)
+        g_csv_filepath_array = NULL;
+        //----------------------------
+        // Update g_n_csv_files after cleaning
+        //----------------------------
+        g_n_csv_files = n_csv_files;
+        //----------------------------
+        // Reserve memory for data
+        //----------------------------
+        if(g_n_csv_files > 0)
         {
-            // Set string to NULL
-            g_csv_filepath_array[i] = NULL;
-        }   
+            // Update g_last_date_array
+            g_last_date_array = (time_t*)malloc(g_n_csv_files * 
+                sizeof(time_t));
+            // Allocate memory for the array of pointers
+            g_csv_filepath_array = (char**)malloc(g_n_csv_files * 
+                sizeof(char*));
+            for (i = 0; i < g_n_csv_files; i++)
+            {
+                // Set string to NULL
+                g_csv_filepath_array[i] = NULL;
+            }
+        }
     }
     //--------------------
     // Check each file
     //--------------------
     i = 0;
-    d = opendir(CSV_CONFIG_FILES_PATH);
     if(d == NULL) 
     {
         #ifdef DEBUG_CVSCONFIG_ERRORS
@@ -223,7 +236,7 @@ static bool areConfigFilesChanged(void)
                 //---------------------
                 // Check file(s) date(s)
                 //---------------------
-                if( stat(filepath, &file_details) != -1)
+                if(stat(filepath, &file_details) != -1)
                 {
                     filedate = file_details.st_mtime;
                     if(filedate != g_last_date_array[i])
@@ -262,6 +275,8 @@ static bool areConfigFilesChanged(void)
                 i++;
             }
         }
+        // close dir to free memory
+        closedir(d);
     }
     return ret;
 }
