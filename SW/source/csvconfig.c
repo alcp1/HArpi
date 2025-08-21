@@ -176,10 +176,16 @@ static bool areConfigFilesChanged(void)
             }
         }
     }
+    // Close dir to free memory
+    if(d != NULL)
+    {
+        closedir(d);
+    }
     //--------------------
     // Check each file
     //--------------------
     i = 0;
+    d = opendir(CSV_CONFIG_FILES_PATH);
     if(d == NULL) 
     {
         #ifdef DEBUG_CVSCONFIG_ERRORS
