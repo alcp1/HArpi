@@ -24,6 +24,7 @@
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
 //----------------------------------------------------------------------------//
+#define MAXIMUM_ACTIONS 200 // No more than 200 actions per action ID
 
 //----------------------------------------------------------------------------//
 // INTERNAL TYPES
@@ -35,6 +36,7 @@
 static pthread_mutex_t g_ActionSets_mutex = PTHREAD_MUTEX_INITIALIZER;
 static harpiActionSetsData* harpiActionSetArray = NULL;
 static int16_t harpiActionSetArrayLen = 0;
+hapcanCANData frames[MAXIMUM_ACTIONS];
 
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
@@ -130,7 +132,6 @@ void harpiactions_SendActionsFromID(int16_t actionsSetID)
     int16_t i;
     unsigned long long millisecondsSinceEpoch;
     int16_t frameCount;
-    hapcanCANData* frames = NULL;
     // Get Timestamp
     millisecondsSinceEpoch = aux_getmsSinceEpoch();
     //------------------------------------------------
@@ -142,13 +143,6 @@ void harpiactions_SendActionsFromID(int16_t actionsSetID)
     //------------------------------------------------
     // Init counter
     frameCount = 0;
-    // Init frames to be sent - reserve for the same size as 
-    // harpiActionSetArrayLen (worst case - all actions have the same ID)
-    if(harpiActionSetArrayLen > 0)
-    {
-        frames = (hapcanCANData*)malloc(harpiActionSetArrayLen * 
-            sizeof(hapcanCANData));
-    }
     // LOCK
     pthread_mutex_lock(&g_ActionSets_mutex);
     // Check all elements of the array
@@ -161,6 +155,14 @@ void harpiactions_SendActionsFromID(int16_t actionsSetID)
             memcpy(&(frames[frameCount]), &(harpiActionSetArray[i].frame), 
                 sizeof(hapcanCANData));
             frameCount++;
+            if(frameCount >= MAXIMUM_ACTIONS)
+            {
+                #ifdef DEBUG_HARPIACTIONS_ERRORS
+                debug_print("harpiactions_SendActionsFromID - ERROR: "
+                    "too many actions!\n");
+                #endif
+                break;
+            }
         }
     }
     // UNLOCK
@@ -172,17 +174,14 @@ void harpiactions_SendActionsFromID(int16_t actionsSetID)
     for(i = 0; i < frameCount; i++)
     {
         // Found - Send CAN Frame for action
-        check = hapcan_addToCANWriteBuffer(&(harpiActionSetArray[i].frame),
+        check = hapcan_addToCANWriteBuffer(&(frames[i]), 
             millisecondsSinceEpoch);
         if(check != HAPCAN_CAN_RESPONSE)
         {
-            #ifdef DEBUG_HAPCAN_ERRORS
+            #ifdef DEBUG_HARPIACTIONS_ERRORS
             debug_print("harpiactions_SendActionsFromID - ERROR: "
                 "hapcan_addToCANWriteBuffer!\n");
             #endif
         }
     }
-    // Free allocated memory
-    free(frames);
-    frames = NULL;
 }

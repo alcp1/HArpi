@@ -25,6 +25,7 @@
         "type_traits": "c",
         "hapcan.h": "c",
         "stdio.h": "c",
-        "stdbool.h": "c"
+        "stdbool.h": "c",
+        "socket.h": "c"
     }
 }

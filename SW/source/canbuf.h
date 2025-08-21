@@ -20,7 +20,7 @@ extern "C" {
 //----------------------------------------------------------------------------//
 // EXTERNAL DEFINITIONS
 //----------------------------------------------------------------------------//
-#define CAN_BUFFER_SIZE    60
+#define CAN_BUFFER_SIZE    600
 enum
 {
     SOCKETCAN_CHANNEL_0 = 0, // First CAN channel

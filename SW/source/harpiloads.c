@@ -24,8 +24,11 @@
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
 //----------------------------------------------------------------------------//
-#define CHANNEL_BYTE 2
-#define STATUS_BYTE 3
+#define CHANNEL_BYTE        2
+#define STATUS_BYTE         3
+#define INITIAL_DELAY       10 // 5 seconds (see HARPILOADS_PERIOD)
+#define WAIT_DELAY_NORMAL   1  // 500ms (see HARPILOADS_PERIOD)
+#define WAIT_DELAY_ERROR    60 // 30 seconds (see HARPILOADS_PERIOD)
 
 //----------------------------------------------------------------------------//
 // INTERNAL TYPES
@@ -50,6 +53,16 @@ typedef struct
     harpiLoadStatus_t status;
 } hlSM_t;
 
+// Periodic actions control
+typedef struct  
+{
+    int16_t initial_delay;
+    int16_t current_delay;
+    int16_t wait;
+    uint8_t last_node;
+    uint8_t last_group;
+} hlPeriodic_t;
+
 //----------------------------------------------------------------------------//
 // INTERNAL GLOBAL VARIABLES
 //----------------------------------------------------------------------------//
@@ -60,6 +73,7 @@ static hlLoads_t* loadsStatusArray = NULL;
 static int16_t loadsStatusArrayLen = 0;
 static hlSM_t* smStatusArray = NULL;
 static int16_t smStatusArrayLen = 0;
+static hlPeriodic_t periodInfo;
 
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
@@ -254,6 +268,12 @@ void harpiloads_init(void)
         harpiSMLoadsArray = NULL;
     }
     harpiSMLoadsArrayLen = 0;
+    // Init periodic check
+    periodInfo.current_delay = 0;
+    periodInfo.initial_delay = 0;
+    periodInfo.wait = WAIT_DELAY_NORMAL;
+    periodInfo.last_group = 0;
+    periodInfo.last_node = 0;
     // UNLOCK
     pthread_mutex_unlock(&g_SMLoads_mutex);
 }
@@ -307,28 +327,49 @@ void harpiloads_periodic(void)
     // Init
     ret = HAPCAN_NO_RESPONSE;
     update = false;
-    // LOCK
-    pthread_mutex_lock(&g_SMLoads_mutex);
-    // Check all loads
-    if(loadsStatusArrayLen > 0)
+    //-------------------------------------------------
+    // Update counters - Do not need thread protection
+    //-------------------------------------------------
+    if(periodInfo.initial_delay < INITIAL_DELAY)
     {
-        for(i_Load = 0; i_Load < loadsStatusArrayLen; i_Load++)
+        periodInfo.initial_delay++;
+    }
+    if(periodInfo.current_delay < WAIT_DELAY_ERROR)
+    {
+        periodInfo.current_delay++;
+    }
+    // Check if initial delay is over and wait is over
+    if(periodInfo.initial_delay >= INITIAL_DELAY && 
+        periodInfo.current_delay >= periodInfo.wait)
+    {
+        // LOCK
+        pthread_mutex_lock(&g_SMLoads_mutex);
+        //-------------------------------------------------
+        // Check all loads to define which status is missing
+        //-------------------------------------------------
+        if(loadsStatusArrayLen > 0)
         {
-            if(loadsStatusArray[i_Load].status == HARPI_LOAD_STATUS_UNDEFINED)
+            for(i_Load = 0; i_Load < loadsStatusArrayLen; i_Load++)
             {
-                update = true;
-                node = loadsStatusArray[i_Load].load.node;
-                group = loadsStatusArray[i_Load].load.group;
-                break;
+                if(loadsStatusArray[i_Load].status == 
+                    HARPI_LOAD_STATUS_UNDEFINED)
+                {
+                    update = true;
+                    node = loadsStatusArray[i_Load].load.node;
+                    group = loadsStatusArray[i_Load].load.group;
+                    break;
+                }
             }
         }
+        // UNLOCK
+        pthread_mutex_unlock(&g_SMLoads_mutex);
     }
-    // UNLOCK
-    pthread_mutex_unlock(&g_SMLoads_mutex);
     // Check if update is needed
     if(update)
     {
+        //-------------------------------------------------
         // Request STATUS update for the given module
+        //-------------------------------------------------
         hapcan_getSystemFrame(&hd_result,
                 HAPCAN_STATUS_REQUEST_NODE_FRAME_TYPE, node, group);
         // Get Timestamp
@@ -340,6 +381,27 @@ void harpiloads_periodic(void)
             debug_print("harpiloads_periodic error: CAN Write!\n");
             #endif
         }
+        //-------------------------------------------------
+        // Update timers - no thread protection needed
+        //-------------------------------------------------
+        periodInfo.current_delay = 0;
+        // Check if it is the same as the last sent
+        if( (periodInfo.last_node == node) && 
+            (periodInfo.last_group == group) )
+        {
+            periodInfo.wait = WAIT_DELAY_ERROR;
+            #ifdef DEBUG_HARPIEVENTS_ERRORS
+            debug_print("harpiloads_periodic - Load Status retry!\n");
+            debug_print("Retry: node %d, group %d: %d\n", node, group);
+            #endif
+        }
+        else
+        {
+            periodInfo.wait = WAIT_DELAY_NORMAL;
+        }
+        // Update last sent
+        periodInfo.last_group = group;
+        periodInfo.last_node = node;
     }    
 }
 
@@ -351,11 +413,13 @@ void harpiloads_handleCAN(hapcanCANData* hapcanData,
     int16_t i_Load;
     int16_t i_SM;
     bool update;
+    bool update_sm;
     harpiLoadStatus_t status;
     int16_t smID;
     // Init to default
     type = HARPI_LOAD_TYPE_OTHER;
     update = false;
+    update_sm = false;
     //---------------------------------------
     // Check the frame type
     //---------------------------------------
@@ -401,6 +465,8 @@ void harpiloads_handleCAN(hapcanCANData* hapcanData,
                             loadsStatusArray[i_Load].status = 
                                 HARPI_LOAD_STATUS_ON;
                         }
+                        // Update State Machines
+                        update_sm = true;
                     }
                     break;
                 //---------------------------------------
@@ -415,7 +481,7 @@ void harpiloads_handleCAN(hapcanCANData* hapcanData,
     //---------------------------------------
     // Check the loads to update the state machine status
     //---------------------------------------
-    if(update)
+    if(update_sm)
     {
         // At least one load changed - check all
         for(i_SM = 0; i_SM < smStatusArrayLen; i_SM++)
