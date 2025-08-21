@@ -16,9 +16,14 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <limits.h>
+#include <pthread.h>
 #include <auxiliary.h>
 #include <debug.h>
+#include <harpiactions.h>
+#include <harpievents.h>
+#include <harpiloads.h>
 #include <harpistatemachines.h>
+#include <timer.h>
 
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
@@ -27,15 +32,480 @@
 //----------------------------------------------------------------------------//
 // INTERNAL TYPES
 //----------------------------------------------------------------------------//
+// State machine data
+typedef struct  
+{
+    int16_t stateMachineID;
+    int16_t currentStateID;
+} hsmData_t;
 
 //----------------------------------------------------------------------------//
 // INTERNAL GLOBAL VARIABLES
 //----------------------------------------------------------------------------//
+static pthread_mutex_t g_SM_mutex = PTHREAD_MUTEX_INITIALIZER;
+static harpiSMEventsData* harpiSMEventsArray = NULL;
+static int16_t harpiSMEventsArrayLen = 0;
+static harpiStateActionsData* harpiSActionsArray = NULL;
+static int16_t harpiSActionsArrayLen = 0;
+static harpiStateTransitionsData* harpiSTransitionArray = NULL;
+static int16_t harpiSTransitionArrayLen = 0;
+static int16_t* smIDArray;
+static int16_t smIDArrayLen;
+static hsmData_t* smDataArray;
+static int16_t smDataArrayLen;
 
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
+static bool copyListToArray(harpiLinkedList* element);
+static void initStateMachinesArrays(void);
+static void checkSMs(harpiEvent_t* event);
+
+// Copy from the Linked List to the Array - return true if OK
+static bool copyListToArray(harpiLinkedList* element)
+{
+    int16_t i_events;
+    int16_t i_actions;
+    int16_t i_transitions;
+    bool isOK;
+    harpiLinkedList* current;
+    // Check all
+    i_events = 0;
+    i_actions = 0;
+    i_transitions = 0;
+    isOK = true;
+    if(element != NULL)
+    {
+        for(current = element; current != NULL; current = current->next) 
+        {
+            switch(current->section)
+            {
+                // ----------------------------------
+                //    - State Machine Events
+                // ----------------------------------
+                case CSV_SECTION_STATE_MACHINES_AND_EVENTS:
+                    if(i_events >= harpiSMEventsArrayLen)
+                    {
+                        #ifdef DEBUG_HARPISM_ERRORS
+                        debug_print("harpism_load error: Events!\n");
+                        #endif
+                        isOK = false;
+                    }
+                    else
+                    {
+                        memcpy(&(harpiSMEventsArray[i_events]),
+                            &(current->smEventsData), 
+                            sizeof(harpiSMEventsData));
+                        i_events++;
+                    }
+                    break;
+                // ----------------------------------
+                //    - State Actions
+                // ----------------------------------
+                case CSV_SECTION_STATES_AND_ACTIONS:
+                    if(i_actions >= harpiSActionsArrayLen)
+                    {
+                        #ifdef DEBUG_HARPISM_ERRORS
+                        debug_print("harpism_load error: Actions!\n");
+                        #endif
+                        isOK = false;
+                    }
+                    else
+                    {
+                        memcpy(&(harpiSActionsArray[i_actions]),
+                            &(current->stateActionsData), 
+                            sizeof(harpiStateActionsData));
+                        i_actions++;
+                    }
+                    break;
+                // ----------------------------------
+                //    - State Transitions
+                // ----------------------------------
+                case CSV_SECTION_STATE_TRANSITIONS:
+                    if(i_transitions >= harpiSActionsArrayLen)
+                    {
+                        #ifdef DEBUG_HARPISM_ERRORS
+                        debug_print("harpism_load error: Transitions!\n");
+                        #endif
+                        isOK = false;
+                    }
+                    else
+                    {
+                        memcpy(&(harpiSTransitionArray[i_transitions]),
+                            &(current->stateTransitionsData), 
+                            sizeof(harpiStateTransitionsData));
+                        i_transitions++;
+                    }
+                    break;
+                // ----------------------------------
+                //    - Others: do nothing
+                // ----------------------------------
+                default:
+                    break;
+            }
+            if(!isOK)
+            {
+                break;
+            }
+        }
+    }
+    return isOK;
+}
+
+// From the State Machine arrays, create the state machine status and 
+// initialize it
+static void initStateMachinesArrays(void)
+{
+    int16_t i_Array;
+    int16_t i_SM;
+    int16_t* tempArray = NULL;
+    int16_t tempArrayLen = 0;
+    int16_t smcount;
+    int16_t totalLen;
+    bool ignoreID;
+    // Init array
+    if(smIDArray != NULL)
+    {
+        free(smIDArray);
+        smIDArray = NULL;
+    }
+    smIDArrayLen = 0;
+    // Init
+    smcount = 0;
+    totalLen = harpiSMEventsArrayLen + harpiSActionsArrayLen + 
+        harpiSTransitionArrayLen;
+    // Update if arrays exist and are OK
+    if(totalLen > 0)
+    {
+        // Init Temp Array
+        tempArray = (int16_t*)malloc(totalLen * sizeof(int16_t));
+        tempArrayLen = totalLen;
+        // Init entire array
+        for(i_SM = 0; i_SM < tempArrayLen; i_SM++)
+        {
+            tempArray[i_SM] = -1;
+        }
+        // Init first position
+        if(harpiSMEventsArrayLen > 0)
+        {
+            tempArray[0] = harpiSMEventsArray[0].stateMachineID;
+        }
+        else if(harpiSActionsArrayLen > 0)
+        {
+            tempArray[0] = harpiSActionsArray[0].stateMachineID;
+        }
+        else if(harpiSTransitionArrayLen > 0)  
+        {
+            tempArray[0] = harpiSTransitionArray[0].stateMachineID;
+        }
+        smcount++;
+        // Check the harpiSMEventsData array
+        for(i_Array = 0; i_Array < harpiSMEventsArrayLen; i_Array++)
+        {
+            ignoreID = false;
+            for(i_SM = 0; i_SM < smcount; i_SM++)
+            {
+                if(harpiSMEventsArray[i_Array].stateMachineID == 
+                    tempArray[i_SM])
+                {
+                    ignoreID = true;
+                }
+            }
+            if(!ignoreID)
+            {
+                // Add to the list of states
+                tempArray[smcount] = harpiSMEventsArray[i_Array].stateMachineID;
+                smcount++;
+            }
+        }
+        // Check the harpiStateActionsData array
+        for(i_Array = 0; i_Array < harpiSActionsArrayLen; i_Array++)
+        {
+            ignoreID = false;
+            for(i_SM = 0; i_SM < smcount; i_SM++)
+            {
+                if(harpiSActionsArray[i_Array].stateMachineID == 
+                    tempArray[i_SM])
+                {
+                    ignoreID = true;
+                }
+            }
+            if(!ignoreID)
+            {
+                // Add to the list of states
+                tempArray[smcount] = harpiSActionsArray[i_Array].stateMachineID;
+                smcount++;
+            }
+        }
+        // Check the harpiStateTransitionsData array
+        for(i_Array = 0; i_Array < harpiSTransitionArrayLen; i_Array++)
+        {
+            ignoreID = false;
+            for(i_SM = 0; i_SM < smcount; i_SM++)
+            {
+                if(harpiSTransitionArray[i_Array].stateMachineID == 
+                    tempArray[i_SM])
+                {
+                    ignoreID = true;
+                }
+            }
+            if(!ignoreID)
+            {
+                // Add to the list of states
+                tempArray[smcount] = 
+                    harpiSTransitionArray[i_Array].stateMachineID;
+                smcount++;
+            }
+        }
+        // Copy from temporary array to final array
+        smIDArrayLen = smcount;
+        smDataArrayLen = smcount;
+        smIDArray = (int16_t*)malloc(smIDArrayLen * sizeof(int16_t));
+        smDataArray = (hsmData_t*)malloc(smDataArrayLen * sizeof(hsmData_t));
+        for(i_SM = 0; i_SM < smcount; i_SM++)
+        {
+            smIDArray[i_SM] = tempArray[i_SM];
+            smDataArray[i_SM].stateMachineID = tempArray[i_SM];
+            // Init with state 0
+            smDataArray[i_SM].currentStateID = 0;
+        }
+        // Free temporary array
+        free(tempArray);
+        tempArray = NULL;
+    }
+}
+
+// Check a new event for the state machines
+static void checkSMs(harpiEvent_t* event)
+{
+    int16_t i_SM;
+    int16_t i;
+    int16_t stateMachineID;
+    int16_t currentStateID;
+    bool match;
+    bool skip;
+    harpiLoadStatus_t load_status;
+    harpiTimerStatus_t timer_status;
+    // Check all state machines
+    for(i_SM = 0; i_SM < smDataArrayLen; i_SM++)
+    {
+        // Update information for the current state machine
+        stateMachineID = smDataArray[i_SM].stateMachineID;
+        currentStateID = smDataArray[i_SM].currentStateID;
+        //---------------------------------------------
+        // State Machines and Events
+        //---------------------------------------------
+        skip = false;
+        for(i = 0; i < harpiSMEventsArrayLen; i++)
+        {
+            match = (!skip);
+            match = match && (harpiSMEventsArray[i].stateMachineID == 
+                stateMachineID);
+            match = match && (harpiSMEventsArray[i].eventSetID == 
+                event->eventSetID);
+            if(match)
+            {
+                // Check timer - if it is expired or exists
+                timer_status = timer_getTimerStatus(stateMachineID);
+                match = (timer_status == HARPI_TIMER_EXPIRED);
+                match = match || (timer_status == HARPI_TIMER_INIT);
+                // Check loads status
+                load_status = harpiloads_isAnyLoadON(stateMachineID);
+                match = match && (load_status == HARPI_LOAD_STATUS_ON);
+                if(match)
+                {
+                    // Turn Off the loads
+                    harpiloads_setLoadsOFF(stateMachineID);
+                    // Set to initial state
+                    smDataArray[i_SM].currentStateID = 0;
+                    // Skip "States and Actions" and "State Transitions"
+                    skip = true;
+                }
+            }
+        }
+        //---------------------------------------------
+        // States and Actions
+        //---------------------------------------------
+        if(!skip)
+        {
+            for(i = 0; i < harpiSActionsArrayLen; i++)
+            {
+                match = (harpiSActionsArray[i].stateMachineID == 
+                    stateMachineID);
+                match = match && (harpiSActionsArray[i].eventSetID == 
+                    event->eventSetID);
+                match = match && (harpiSActionsArray[i].currentStateID == 
+                    currentStateID);
+                if(match)
+                {
+                    // New event: Start timer
+                    timer_setTimer(stateMachineID, HARPI_STATE_WAIT_PERIOD);
+                    // Perform the Action
+                    harpiactions_SendActionsFromID(
+                        harpiSActionsArray[i].actionsSetID);
+                }
+            }
+        }
+        //---------------------------------------------
+        // State Transitions
+        //---------------------------------------------
+        if(!skip)
+        {
+            for(i = 0; i < harpiSTransitionArrayLen; i++)
+            {
+                match = (harpiSTransitionArray[i].stateMachineID == 
+                    stateMachineID);
+                match = match && (harpiSTransitionArray[i].eventSetID == 
+                    event->eventSetID);
+                match = match && (harpiSTransitionArray[i].currentStateID == 
+                    currentStateID);
+                if(match)
+                {
+                    // State transition
+                    smDataArray[i_SM].currentStateID = 
+                        harpiSTransitionArray[i].newStateID;
+                }
+            }
+        }
+    }
+}
 
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
+void harpism_init(void)
+{
+    //---------------------------------------------
+    // Delete Linked List and Array - PROTECTED
+    //---------------------------------------------
+    // LOCK
+    pthread_mutex_lock(&g_SM_mutex);
+    // Init arrays
+    //----------------------------------------
+    //    - State Machine Events
+    //----------------------------------------
+    if(harpiSMEventsArray != NULL)
+    {
+        free(harpiSMEventsArray);
+        harpiSMEventsArray = NULL;
+    }
+    harpiSMEventsArrayLen = 0;
+    //----------------------------------------
+    //    - State Actions
+    //----------------------------------------
+    if(harpiSActionsArray != NULL)
+    {
+        free(harpiSActionsArray);
+        harpiSActionsArray = NULL;
+    }
+    harpiSActionsArrayLen = 0;
+    //----------------------------------------
+    //    - State Transitions
+    //----------------------------------------
+    if(harpiSTransitionArray != NULL)
+    {
+        free(harpiSTransitionArray);
+        harpiSTransitionArray = NULL;
+    }
+    harpiSTransitionArrayLen = 0;
+    // UNLOCK
+    pthread_mutex_unlock(&g_SM_mutex);
+}
+
+void harpism_load(harpiLinkedList* element)
+{
+    bool isOK;
+    //---------------------------------------------
+    // Clear array, copy from list to array, delete linked lisk - PROTECTED
+    //---------------------------------------------
+    // LOCK
+    pthread_mutex_lock(&g_SM_mutex);
+    //----------------------------------------
+    //    - State Machine Events
+    //----------------------------------------
+    // Clear array
+    if(harpiSMEventsArray != NULL)
+    {
+        free(harpiSMEventsArray);
+        harpiSMEventsArray = NULL;
+    }
+    // Get array size and allocate memory
+    harpiSMEventsArrayLen = harpi_getLinkedListNElements(
+        CSV_SECTION_STATE_MACHINES_AND_EVENTS);
+    harpiSMEventsArray = (harpiSMEventsData*)malloc(harpiSMEventsArrayLen * 
+        sizeof(harpiSMEventsData));
+    //----------------------------------------
+    //    - State Actions
+    //----------------------------------------
+    // Clear array
+    if(harpiSActionsArray != NULL)
+    {
+        free(harpiSActionsArray);
+        harpiSActionsArray = NULL;
+    }
+    // Get array size and allocate memory
+    harpiSActionsArrayLen = harpi_getLinkedListNElements(
+        CSV_SECTION_STATES_AND_ACTIONS);
+    harpiSActionsArray = (harpiStateActionsData*)malloc(harpiSActionsArrayLen * 
+        sizeof(harpiStateActionsData));
+    //----------------------------------------
+    //    - State Transitions
+    //----------------------------------------
+    // Clear array
+    if(harpiSTransitionArray != NULL)
+    {
+        free(harpiSTransitionArray);
+        harpiSTransitionArray = NULL;
+    }
+    // Get array size and allocate memory
+    harpiSTransitionArrayLen = harpi_getLinkedListNElements(
+        CSV_SECTION_STATE_TRANSITIONS);
+    harpiSTransitionArray = (harpiStateTransitionsData*)malloc(
+        harpiSTransitionArrayLen * sizeof(harpiStateTransitionsData));
+    //----------------------------------------
+    // Create arrays from list
+    //----------------------------------------
+    isOK = copyListToArray(element);
+    // UNLOCK
+    pthread_mutex_unlock(&g_SM_mutex);
+    // Clear data if copy had an error
+    if(!isOK)
+    {
+        harpism_init();
+    }
+    // LOCK
+    pthread_mutex_lock(&g_SM_mutex);
+    // Init state machine array
+    initStateMachinesArrays();
+    // Create and init timers
+    timer_createTimers(smIDArrayLen, smIDArray);
+    // UNLOCK
+    pthread_mutex_unlock(&g_SM_mutex);
+}
+
+void harpism_periodic(void)
+{
+    int check;
+    bool retry;
+    harpiEvent_t event;    
+    retry = true;
+    while(retry)
+    {
+        // Check if there is a new event
+        check = harpievents_getEvent(&event);
+        if(check == HARPIEVENTS_NEW_EVENT)
+        {
+            // LOCK
+            pthread_mutex_lock(&g_SM_mutex);
+            // Check state machines
+            checkSMs(&event);
+            // UNLOCK
+            pthread_mutex_unlock(&g_SM_mutex);
+        }
+        else
+        {
+            // leave loop
+            retry = false;
+        }
+    }
+}

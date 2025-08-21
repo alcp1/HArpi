@@ -49,6 +49,19 @@ extern "C" {
    
 /* CVS CONFIG DEBUG */
 #define DEBUG_CVSCONFIG_ERRORS
+#define DEBUG_CVSCONFIG_EVENTS
+
+/* HARPIACTIONS */
+#define DEBUG_HARPIACTIONS_ERRORS
+
+/* HARPIACTIONS */
+#define DEBUG_HARPIEVENTS_ERRORS
+
+/* HARPILOADS */
+#define DEBUG_HARPILOADS_ERRORS
+
+/* HARPI STATE MACHINES*/
+#define DEBUG_HARPISM_ERRORS
     
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES

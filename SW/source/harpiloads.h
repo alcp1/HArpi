@@ -31,6 +31,48 @@ extern "C" {
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
+/**
+ * Init data:
+ * - empty the list and if list is available, free used memory
+ * 
+ **/
+void harpiloads_init(void);
+
+/**
+ * Load list and memory with linked list data
+ * \param   element (INPUT) The linked list data
+ * 
+ **/
+void harpiloads_load(harpiLinkedList* element);
+
+/**
+ * Periodic check for unitialized loads
+ * 
+ **/
+void harpiloads_periodic(void);
+
+/**
+ * Check the CAN message received for updating loads status
+ * \param   hapcanData      (INPUT) received HAPCAN Frame
+ *          timestamp       (INPUT) Received message timestamp
+ * 
+ */
+void harpiloads_handleCAN(hapcanCANData* hapcanData, 
+        unsigned long long timestamp);
+
+/**
+ * Load list and memory with linked list data
+ * \param   stateMachineID (INPUT) The state machine ID
+ * 
+ **/
+harpiLoadStatus_t harpiloads_isAnyLoadON(int16_t stateMachineID);
+
+/**
+ * Turn OFF the loads of a given state machine
+ * \param   stateMachineID (INPUT) The state machine ID
+ * 
+ **/
+void harpiloads_setLoadsOFF(int16_t stateMachineID);
 
 
 

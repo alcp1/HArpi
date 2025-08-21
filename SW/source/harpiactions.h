@@ -31,7 +31,28 @@ extern "C" {
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
+/**
+ * Init data:
+ * - empty the list and if list is available, free used memory
+ * 
+ **/
+void harpiactions_init(void);
 
+/**
+ * Load list and memory with linked list data
+ * \param   element (INPUT) The linked list data
+ * 
+ **/
+void harpiactions_load(harpiLinkedList* element);
+
+/**
+ * Search for an harpiActionSetsData data and send the data that matches such
+ * an ID
+ * 
+ * \param   actionSetID (INPUT) The HAPCAN Frame to be searched
+ *  
+ **/
+void harpiactions_SendActionsFromID(int16_t actionsSetID);
 
 
 #ifdef __cplusplus

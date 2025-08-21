@@ -41,7 +41,7 @@ enum
 #define HAPCAN_CAN_STATUS_SEND_RETRIES 3
 // General HAPCAN data characteristics
 #define HAPCAN_DATA_LEN 8
-#define HAPCAN_SOCKET_DATA_LEN 15
+#define HAPCAN_FULL_FRAME_LEN 12
 // SOCKET  
 #define HAPCAN_MAX_RESPONSES 2
 // FRAMES
@@ -169,7 +169,7 @@ void hapcan_getSystemFrame(hapcanCANData *hd_result, uint16_t frametype,
  *          
  */
 int hapcan_addToCANWriteBuffer(hapcanCANData* hapcanData, 
-        unsigned long long timestamp, bool sendToSocket);
+        unsigned long long timestamp);
 
 #ifdef __cplusplus
 }

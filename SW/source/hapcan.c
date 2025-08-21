@@ -182,7 +182,7 @@ void hapcan_getSystemFrame(hapcanCANData *hd_result, uint16_t frametype,
  * Add a HAPCAN Message to the CAN Write Buffer
  */
 int hapcan_addToCANWriteBuffer(hapcanCANData* hapcanData, 
-        unsigned long long timestamp, bool sendToSocket)
+        unsigned long long timestamp)
 {
     int check;
     struct can_frame cf_Frame;

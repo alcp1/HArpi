@@ -3,67 +3,64 @@
 //----------------------------------------------------------------------------//
 //  REVISION |    DATE     |                               |      AUTHOR      //
 //----------------------------------------------------------------------------//
-//  1.00     | 30/Jul/2025 |                               | ALCP             //
-// - First Version                                                            //
+//  1.00     | 17/Aug/2025 |                               | ALCP             //
+// - First version                                                            //
 //----------------------------------------------------------------------------//
 
-
-#ifndef CSVCONFIG_H
-#define CSVCONFIG_H
+#ifndef TIMER_H
+#define TIMER_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
-/*
-* Includes
-*/
-    
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <harpi.h>
+
 //----------------------------------------------------------------------------//
 // EXTERNAL DEFINITIONS
-//----------------------------------------------------------------------------//
-#define CSV_CONFIG_FILES_PATH  "."
-
+//----------------------------------------------------------------------------//    
+    
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES
 //----------------------------------------------------------------------------//
-// Section
-typedef enum  
-{
-    CSV_SECTION_STATE_MACHINES_AND_LOADS = 0,
-    CSV_SECTION_STATE_MACHINES_AND_EVENTS,
-    CSV_SECTION_ACTION_SETS,
-    CSV_SECTION_STATES_AND_ACTIONS,
-    CSV_SECTION_STATE_TRANSITIONS,
-    CSV_SECTION_EVENT_SETS,
-    CSV_SECTION_OTHER,
-} csvconfig_file_section_t;
     
 //----------------------------------------------------------------------------//
 // EXTERNAL FUNCTIONS
 //----------------------------------------------------------------------------//
 /**
- * Initial setup (only called during startup)
- **/
-void csvconfig_init(void);
-
-/**
- * Inform if a new configuraton file is available
+ * Create timers
  * 
- * \return  true    new file available
- *          false   no new file available
- **/
-bool csvconfig_isNewConfigAvailable(void);
-
-/**
- * Fill the entire configuration file with data from the available files
+ * \param       ntimers: number of timers to be created
+ * \param       smIDArray: an array with the stateMachineID of each timer
  * 
  **/
-void csvconfig_reload(void);
+void timer_createTimers(int16_t ntimers, int16_t* smIDArray);
+
+/**
+ * set timer with specific value
+ * \param       stateMachineID: number of timers to be created
+ * \param       value: value in 100ms base (ex: 3 = 300ms)
+ * 
+ **/
+void timer_setTimer(int16_t stateMachineID, int16_t value);
+
+/**
+ * Periodic update of timers - To be called every 100ms
+ **/
+void timer_periodic(void);
+
+/**
+ * get the timer status of a given stateMachineID
+ * \param       stateMachineID: number of timers to be created
+ * 
+ **/
+harpiTimerStatus_t timer_getTimerStatus(int16_t stateMachineID);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* CSVCONFIG_H */
+#endif
 

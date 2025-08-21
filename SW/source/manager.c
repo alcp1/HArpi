@@ -25,7 +25,7 @@
 #include <hapcan.h>
 #include <manager.h>
 #include <csvconfig.h>
-#include <harpievents.h>
+#include <harpi.h>
 
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
@@ -202,7 +202,7 @@ void* managerHandleCAN0Buffers(void *arg)
                         //-------------------------------------------------
                         // Error in handled within the function
                         hapcan_getHAPCANDataFromCAN(&cf_Frame, &hapcanData);
-                        harpievents_handleCAN(&hapcanData, timestamp);
+                        harpi_handleCAN(&hapcanData, timestamp);
                     }
                 }
                 // 2ms loop after empty buffer
@@ -221,34 +221,22 @@ void* managerHandleCAN0Buffers(void *arg)
 void* managerHandleHAPCANPeriodic(void *arg)
 {
     int check;
-    bool enable;
     stateCAN_t sc_state;
     while(1)
     {
-        // Check if this feature is enabled:
-        enable = false;
-        if(enable)
-        {
-            /* STATE CHECK AND RE-INIT */
-            check = canbuf_getState(0, &sc_state);
-            if( (check == EXIT_SUCCESS) && (sc_state == CAN_CONNECTED) )
-            {                                    
-                //----------------------------------------------------------
-                // Check for messages to be sent to CAN Bus for getting
-                // module status
-                //----------------------------------------------------------
-                // Error is handled within the functions
-                //hsystem_periodic();
-            }
-            else
-            {
-                // Request initial status update
-                //hsystem_statusUpdate();
-            }
+        /* STATE CHECK AND RE-INIT */
+        check = canbuf_getState(0, &sc_state);
+        if( (check == EXIT_SUCCESS) && (sc_state == CAN_CONNECTED) )
+        {                                    
+            //----------------------------------------------------------
+            // Check for messages to be sent to CAN Bus for getting
+            // module status
+            //----------------------------------------------------------
+            // Error is handled within the functions
+            harpi_periodic();
         }
-        // 50ms Loop - Give time for the modules to respond and to not increase
-        // Bus load too much (some modules send 17 CAN messages for its status)
-        usleep(50000);
+        // 5ms Loop
+        usleep(5000);
     }
 }
 
@@ -257,17 +245,15 @@ void* managerHandleConfigFile(void *arg)
 {    
     while(1)
     {
-        /*
-        if(config_isNewConfigAvailable())
+        if(csvconfig_isNewConfigAvailable())
         {
             #ifdef DEBUG_MANAGER_CONFIG_EVENTS
-            debug_print("managerHandleConfigFile - New config available!\n");
+            debug_print("managerHandleConfigFile - New CSV file(s) "
+                "available!\n");
             #endif
-            // For every new configuration file, reload the gateway
-            //gateway_init();
+            // Reload the configuration file(s)
+            csvconfig_reload();
         }
-        */
-        csvconfig_init();
         // Only check every 10 seconds
         sleep(10);
     }
@@ -291,14 +277,18 @@ void managerInit(void)
     debug_print("HArpi Build date/time = %s - %s\n", __DATE__, __TIME__);
     #endif
     /**************************************************************************
-     * INIT CONFIG AND GATEWAY
-     *************************************************************************/
-    //config_init();
-    //gateway_init();
-    
-    /**************************************************************************
      * INIT BUFFERS
      *************************************************************************/        
+    // HARPI Buffers
+     for(li_index = 0; li_index < INIT_RETRIES; li_index++)
+    {
+        li_check = harpi_initBuffers();
+        if(li_check == EXIT_SUCCESS)
+        {
+            break;
+        }
+    }
+    // CAN Buffers
     for(li_index = 0; li_index < INIT_RETRIES; li_index++)
     {
         li_check = canbuf_init(0);
@@ -307,7 +297,12 @@ void managerInit(void)
             break;
         }
     }
-    
+
+    /**************************************************************************
+     * INIT CONFIG AND GATEWAY
+     *************************************************************************/
+    csvconfig_init();
+        
     /**************************************************************************
      * INIT THREADS - CREATE AND JOIN
      *************************************************************************/    
