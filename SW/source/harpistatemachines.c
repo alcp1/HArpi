@@ -163,13 +163,18 @@ static void initStateMachinesArrays(void)
     int16_t smcount;
     int16_t totalLen;
     bool ignoreID;
-    // Init array
+    // Init arrays
     if(smIDArray != NULL)
     {
         free(smIDArray);
         smIDArray = NULL;
     }
+    if(smDataArray != NULL)
+    {
+        free(smDataArray);
+    }
     smIDArrayLen = 0;
+    smDataArrayLen = 0;
     // Init
     smcount = 0;
     totalLen = harpiSMEventsArrayLen + harpiSActionsArrayLen + 

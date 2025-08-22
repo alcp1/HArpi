@@ -14,15 +14,12 @@ CC = gcc
 #         Also, first match wins: If you have two directories, say dirA and dirB, and both contain a file named my_header.h, and your CFLAGS include -IdirA -IdirB, 
 #         then if a source file does #include "my_header.h", the compiler will find and use the my_header.h from dirA first.
 CFLAGS=-c                      \
-         -lpaho-mqtt3c         \
          -pthread              \
          -Wall                 \
-         -ljson-c              \
          -g                    \
          -Isource/             \
-         -I../HMSG/SW/source/  \
 
-LDFLAGS = -lpaho-mqtt3c -pthread -ljson-c -g
+LDFLAGS = -pthread -g
 
 # --- Project Configuration ---
 # Name of the executable

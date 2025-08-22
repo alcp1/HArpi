@@ -148,8 +148,6 @@ static bool areConfigFilesChanged(void)
             // Free the string and set it to NULL
             free(g_csv_filepath_array[i]);
             g_csv_filepath_array[i] = NULL;
-            // Update file(s) date(s)
-            g_last_date_array[i] = 0;
         }
         // Then, free the array of pointers itself and set it to NULL
         free(g_csv_filepath_array);
@@ -173,6 +171,8 @@ static bool areConfigFilesChanged(void)
             {
                 // Set string to NULL
                 g_csv_filepath_array[i] = NULL;
+                // Initialize time
+                g_last_date_array[i] = time(NULL);
             }
         }
     }
