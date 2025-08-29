@@ -35,6 +35,7 @@
 //----------------------------------------------------------------------------//
 typedef struct  
 {
+    int16_t stateMachineID;
     bool send;
     hapcanCANData frame;
 } hlFrameInfo_t;
@@ -74,6 +75,9 @@ static int16_t loadsStatusArrayLen = 0;
 static hlSM_t* smStatusArray = NULL;
 static int16_t smStatusArrayLen = 0;
 static hlPeriodic_t periodInfo;
+static hlFrameInfo_t* offFrameArray;
+static int16_t offFrameArrayLen = 0;
+static hapcanCANData frames[MAXIMUM_ACTIONS];
 
 //----------------------------------------------------------------------------//
 // INTERNAL FUNCTIONS
@@ -81,7 +85,9 @@ static hlPeriodic_t periodInfo;
 static bool copyListToArray(harpiLinkedList* element);
 static void initLoadsArray(void);
 static void initStateMachinesArray(void);
-static void getLoadOFFInfo(harpiSMLoadsData* load, hlFrameInfo_t* frame_info);
+static void initOffFramesArray(void);
+static void updateRelayOffFrame(harpiSMLoadsData* load);
+static void getLoadOffInfo(harpiSMLoadsData* load, hlFrameInfo_t* frame_info);
 
 // Copy from the Linked List to the Array
 static bool copyListToArray(harpiLinkedList* element)
@@ -211,14 +217,93 @@ static void initStateMachinesArray(void)
     }
 }
 
+// Generate an array with the HAPCAN frames to be sent for each state machine
+// to set its loads to OFF 
+static void initOffFramesArray(void)
+{
+    int16_t i_load;
+    // Init array and length
+    if(offFrameArray != NULL)
+    {
+        free(offFrameArray);
+        offFrameArray = NULL;
+    }
+    offFrameArrayLen = 0;
+    // Update if "State Machines and Loads" exists and is OK
+    if(harpiSMLoadsArrayLen > 0)
+    {
+        // Init array with the same size as state machine loads (worst-case)
+        offFrameArray = (hlFrameInfo_t*)malloc(harpiSMLoadsArrayLen * 
+            sizeof(hlFrameInfo_t));
+    }
+    // Set first load
+    if(harpiSMLoadsArrayLen > 0)
+    {
+        getLoadOffInfo(&(harpiSMLoadsArray[0]), &(offFrameArray[0]));
+        offFrameArrayLen++;
+    }
+    // Check all loads
+    for(i_load = 0; i_load < harpiSMLoadsArrayLen; i_load++)
+    {
+        switch(harpiSMLoadsArray[i_load].type)
+        {
+            case HARPI_LOAD_TYPE_RELAY:
+                updateRelayOffFrame(&(harpiSMLoadsArray[i_load]));
+                break;
+            default:
+                // Update the load info and update counter
+                getLoadOffInfo(&(harpiSMLoadsArray[i_load]), 
+                    &(offFrameArray[offFrameArrayLen]));
+                offFrameArrayLen++;
+                break;
+        }
+    }    
+}
+
+// Update offFrameArray and offFrameArrayLen based on its current values and the
+// load information, for a relay module
+static void updateRelayOffFrame(harpiSMLoadsData* load)
+{
+    int16_t i;
+    bool condition;
+    bool match;
+    uint8_t channel_bit;
+    match = false;
+    for(i = 0; i < offFrameArrayLen; i++)
+    {            
+        condition = load->stateMachineID == offFrameArray[i].stateMachineID;
+        condition = condition && load->node == offFrameArray[i].frame.data[2];
+        condition = condition && load->group == offFrameArray[i].frame.data[3];
+        condition = condition && offFrameArray[i].frame.data[0] == 0x00;
+        condition = condition && offFrameArray[i].frame.data[4] == 0x00;
+        if(condition)
+        {
+            // Load Mach - update the channel Bit - do not create a new message
+            channel_bit =  1 << (load->channel - 1);
+            offFrameArray[i].frame.data[1] = offFrameArray[i].frame.data[1] |
+                channel_bit;
+            match = true;
+        }
+    }
+    if(!match)
+    {
+        // Create a new frame
+        getLoadOffInfo(load, &(offFrameArray[offFrameArrayLen]));
+        offFrameArrayLen++;
+    }
+}
+
 // Generate a HAPCAN frame based on the load's info
 // INPUT: load
 // OUTPUT: frame (to be filled)
-static void getLoadOFFInfo(harpiSMLoadsData* load, hlFrameInfo_t* frame_info)
+static void getLoadOffInfo(harpiSMLoadsData* load, hlFrameInfo_t* frame_info)
 {
     uint8_t channel_bit;
+    // Initial updates
     aux_clearHAPCANFrame(&(frame_info->frame));
     frame_info->send = false;
+    frame_info->stateMachineID = load->stateMachineID;
+    // Check how to fill based on the load type
     switch(load->type)
     {
         case HARPI_LOAD_TYPE_RELAY:
@@ -311,6 +396,7 @@ void harpiloads_load(harpiLinkedList* element)
     // Init Loads and State machines status
     initLoadsArray();
     initStateMachinesArray();
+    initOffFramesArray();
     // UNLOCK
     pthread_mutex_unlock(&g_SMLoads_mutex);
 }
@@ -390,7 +476,7 @@ void harpiloads_periodic(void)
             (periodInfo.last_group == group) )
         {
             periodInfo.wait = WAIT_DELAY_ERROR;
-            #ifdef DEBUG_HARPIEVENTS_ERRORS
+            #ifdef DEBUG_HARPILOADS_ERRORS
             debug_print("harpiloads_periodic - Load Status retry!\n");
             debug_print("Retry: node %d, group %d: %d\n", node, group);
             #endif
@@ -546,75 +632,57 @@ harpiLoadStatus_t harpiloads_isAnyLoadON(int16_t stateMachineID)
 
 void harpiloads_setLoadsOFF(int16_t stateMachineID)
 {
-    int16_t i;
-    int16_t smID;
-    hlFrameInfo_t* hframeInfoArray = NULL;
-    int16_t hframeInfoArrayLen = 0;
     int16_t check;
+    int16_t i;
     unsigned long long millisecondsSinceEpoch;
-    // LOCK
+    int16_t frameCount;
+    // Get Timestamp
+    millisecondsSinceEpoch = aux_getmsSinceEpoch();
+    //------------------------------------------------
+    // Avoid nested mutex locks from g_SMLoads_mutex and 
+    // hapcan_addToCANWriteBuffer: First create an array of frames to be sent, 
+    // then send them
+    //------------------------------------------------
+    // 1. Prepare frames to be sent - LOCK needed
+    //------------------------------------------------
+    // Init counter
+    frameCount = 0;
     pthread_mutex_lock(&g_SMLoads_mutex);
-    //-----------------------------------------
-    // Get the number of loads to be turned OFF
-    //-----------------------------------------
-    hframeInfoArrayLen = 0;
-    for(i = 0; i < harpiSMLoadsArrayLen; i++)
+    // Check all elements of the array
+    for(i = 0; i < offFrameArrayLen; i++)
     {
-        smID = harpiSMLoadsArray[i].stateMachineID;
-        if(smID == stateMachineID)
+        // Check for a match
+        if(offFrameArray[i].stateMachineID == stateMachineID)
         {
-            hframeInfoArrayLen++;
-        }
-    }
-    //-----------------------------------------
-    // Allocate memory
-    //-----------------------------------------
-    if(hframeInfoArrayLen > 0)
-    {
-        hframeInfoArray = (hlFrameInfo_t*)malloc(hframeInfoArrayLen * 
-            sizeof(hlFrameInfo_t));
-        //-----------------------------------------
-        // Get frame info - Fill hframeInfoArray
-        //-----------------------------------------
-        hframeInfoArrayLen = 0;
-        for(i = 0; i < harpiSMLoadsArrayLen; i++)
-        {
-            smID = harpiSMLoadsArray[i].stateMachineID;
-            if(smID == stateMachineID)
+            // Add to frames to be sent
+            memcpy(&(frames[frameCount]), &(offFrameArray[i].frame), 
+                sizeof(hapcanCANData));
+            frameCount++;
+            if(frameCount >= MAXIMUM_ACTIONS)
             {
-                // Get frame info
-                getLoadOFFInfo(&(harpiSMLoadsArray[i]), 
-                    &(hframeInfoArray[hframeInfoArrayLen]));
-                hframeInfoArrayLen++;
+                #ifdef DEBUG_HARPILOADS_ERRORS
+                debug_print("harpiloads_setLoadsOFF - ERROR: max actions!\n");
+                #endif
+                break;
             }
         }
     }
     // UNLOCK
     pthread_mutex_unlock(&g_SMLoads_mutex);
-    //-----------------------------------------
-    // Send frames
-    //-----------------------------------------
-    // Get Timestamp
-    millisecondsSinceEpoch = aux_getmsSinceEpoch();
-    // Send each frame
-    for(i = 0; i < hframeInfoArrayLen; i++)
+    //---------------------------------
+    // 2. Send Frames - LOCK not needed
+    //---------------------------------
+    // Check all elements of the array
+    for(i = 0; i < frameCount; i++)
     {
-        if(hframeInfoArray[i].send)
+        // Found - Send CAN Frame for action
+        check = hapcan_addToCANWriteBuffer(&(frames[i]), 
+            millisecondsSinceEpoch);
+        if(check != HAPCAN_CAN_RESPONSE)
         {
-            // Send CAN Frame
-            check = hapcan_addToCANWriteBuffer(&(hframeInfoArray[i].frame),
-                millisecondsSinceEpoch);
-            if(check != HAPCAN_CAN_RESPONSE)
-            {
-                #ifdef DEBUG_HAPCAN_ERRORS
-                debug_print("harpiloads_setLoadsOFF - ERROR!\n");
-                #endif
-            }
+            #ifdef DEBUG_HARPILOADS_ERRORS
+            debug_print("harpiloads_setLoadsOFF - ERROR: CAN write!\n");
+            #endif
         }
     }
-    //-----------------------------------------
-    // Free memory
-    //-----------------------------------------
-    free(hframeInfoArray);
-    hframeInfoArray = NULL;
 }

@@ -24,10 +24,13 @@ extern "C" {
 //----------------------------------------------------------------------------//
 // EXTERNAL DEFINITIONS
 //----------------------------------------------------------------------------//
+// Timing
 #define HARPI_PERIOD 5000UL         // 5ms - See manager.c
 #define HARPILOADS_PERIOD 500000UL  // 500ms
 #define HARPITIMER_PERIOD 100000UL  // 100ms
 #define HARPI_STATE_WAIT_PERIOD 100 // 10s
+// Constraints
+#define MAXIMUM_ACTIONS 200 // No more than 200 actions per action ID
     
 //----------------------------------------------------------------------------//
 // EXTERNAL TYPES
