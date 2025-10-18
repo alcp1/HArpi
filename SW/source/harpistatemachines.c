@@ -521,6 +521,8 @@ void harpism_periodic(void)
 void harpism_loadsOFFCallback(int16_t stateMachineID)
 {
     int16_t i_SM;
+    harpiTimerStatus_t timer_status;
+    bool condition;
     // LOCK
     pthread_mutex_lock(&g_SM_mutex);
     // Set state machine to initial state   
@@ -529,8 +531,16 @@ void harpism_loadsOFFCallback(int16_t stateMachineID)
         // Chech if state machine ID matches
         if(smDataArray[i_SM].stateMachineID == stateMachineID)
         {
-            // Set to initial state, as all loads are OFF
-            smDataArray[i_SM].currentStateID = 0;
+            // Check timer - if it is expired or exists
+            timer_status = timer_getTimerStatus(stateMachineID);
+            condition = (timer_status == HARPI_TIMER_EXPIRED);
+            condition = condition || (timer_status == HARPI_TIMER_INIT);
+            // Init state machine if timer is not running
+            if(condition)
+            {
+                // Set to initial state, as all loads are OFF
+                smDataArray[i_SM].currentStateID = 0;
+            }
         }
     }
     // UNLOCK
