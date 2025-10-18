@@ -26,6 +26,8 @@
         "hapcan.h": "c",
         "stdio.h": "c",
         "stdbool.h": "c",
-        "socket.h": "c"
+        "socket.h": "c",
+        "pthread.h": "c",
+        "harpistatemachines.h": "c"
     }
 }

@@ -6,6 +6,9 @@
 //  1.00     | 01/Jun/2025 |                               | ALCP             //
 // - First version                                                            //
 //----------------------------------------------------------------------------//
+//  1.01     | 18/Oct/2025 |                               | ALCP             //
+// - New actions when all loads are OFF                                       //
+//----------------------------------------------------------------------------//
 
 /*
 * Includes
@@ -20,6 +23,7 @@
 #include <auxiliary.h>
 #include <debug.h>
 #include <harpiloads.h>
+#include <harpistatemachines.h>
 
 //----------------------------------------------------------------------------//
 // INTERNAL DEFINITIONS
@@ -598,6 +602,14 @@ void harpiloads_handleCAN(hapcanCANData* hapcanData,
                     }
                 }
             }
+            // Check if status changed to OFF
+            if( (smStatusArray[i_SM].status != HARPI_LOAD_STATUS_OFF) &&
+                (status == HARPI_LOAD_STATUS_OFF) )
+            {
+                // Callback to inform the state machine that all loads are OFF
+                harpism_loadsOFFCallback(smStatusArray[i_SM].stateMachineID);
+            }
+            // Update state machine status
             smStatusArray[i_SM].status = status;
         }
     }

@@ -6,6 +6,9 @@
 //  1.00     | 01/Jun/2025 |                               | ALCP             //
 // - First version                                                            //
 //----------------------------------------------------------------------------//
+//  1.01     | 18/Oct/2025 |                               | ALCP             //
+// - New actions when all loads are OFF                                       //
+//----------------------------------------------------------------------------//
 
 /*
 * Includes
@@ -513,4 +516,23 @@ void harpism_periodic(void)
             retry = false;
         }
     }
+}
+
+void harpism_loadsOFFCallback(int16_t stateMachineID)
+{
+    int16_t i_SM;
+    // LOCK
+    pthread_mutex_lock(&g_SM_mutex);
+    // Set state machine to initial state   
+    for(i_SM = 0; i_SM < smDataArrayLen; i_SM++)
+    {
+        // Chech if state machine ID matches
+        if(smDataArray[i_SM].stateMachineID == stateMachineID)
+        {
+            // Set to initial state, as all loads are OFF
+            smDataArray[i_SM].currentStateID = 0;
+        }
+    }
+    // UNLOCK
+    pthread_mutex_unlock(&g_SM_mutex);
 }
